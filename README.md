@@ -38,7 +38,7 @@ The app needs a web address to run, so host this single file for free. Two optio
 
 ## 📱 Set it up on your iPhone
 
-1. Open your app link in **Safari**.
+1. Open your github or netlify app link in **Safari**.
 2. Tap the **Share** button (square with an up arrow).
 3. Scroll down → tap **Add to Home Screen** → **Add**.
 4. Open it from the new home-screen icon. Tap **Add PDFs** and pick books from your Files app.
@@ -48,7 +48,7 @@ Settings → Safari (that would erase your shelf and bookmarks).
 
 ## 🤖 Set it up on your Android phone
 
-1. Open your app link in **Chrome**.
+1. Open your github or netlify app link in **Chrome**.
 2. Tap the **⋮ menu** (top right).
 3. Tap **Add to Home screen** (on some phones: "Install app") → **Add**.
 4. Open it from the icon. Tap **Add PDFs** and pick books from your file manager.
