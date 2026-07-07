@@ -68,7 +68,7 @@ your books and bookmarks live.
 | Back to shelf | ‹ Shelf button |
 | Remove a book | "remove" on the book card |
 
-## 💻 Bonus: run it on a computer instead (Python version)
+## 💻 Run it on a computer instead (Python version)
 
 The `local-server/` folder contains a version that stores books as normal files on disk,
 served by a zero-dependency Python server:
