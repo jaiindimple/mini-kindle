@@ -103,6 +103,13 @@
     font-family:var(--sans);font-size:12px;padding:4px 12px;border-radius:20px;
     background:rgba(35,33,28,.55);color:#fff;opacity:0;transition:opacity .3s}
   #pagePill.show{opacity:1}
+  /* toast message */
+  #toast{position:fixed;left:50%;transform:translateX(-50%);
+    bottom:calc(44px + env(safe-area-inset-bottom));z-index:60;pointer-events:none;
+    max-width:min(340px,calc(100vw - 32px));text-align:center;
+    font-family:var(--sans);font-size:12.5px;line-height:1.4;padding:10px 14px;border-radius:12px;
+    background:rgba(35,33,28,.9);color:#fff;opacity:0;transition:opacity .25s}
+  #toast.show{opacity:1}
 
   #stage{flex:1;overflow:auto;display:flex;padding:12px;
     padding-bottom:calc(12px + env(safe-area-inset-bottom))}
@@ -191,6 +198,7 @@
 
   <div id="stage"><div id="loading">Opening book…</div><canvas id="pageCanvas" hidden></canvas><div id="textView" hidden></div></div>
   <div id="pagePill"></div>
+  <div id="toast"></div>
 </div>
 
 <script>
@@ -280,6 +288,7 @@ let doc=null, current=1, target=1, zoomLevel=1, bookName="", rendering=false, pe
 let viewMode = store.get("viewMode","page");     // "page" (exact) or "text" (reflow)
 let textSize = store.get("textSize", 19);         // font size for reflow mode
 let pageHasText = true;                            // does the current page have extractable text
+let bookHasText = true;                            // does the book contain real text at all
 
 async function openBook(name){
   bookName = name;
@@ -296,7 +305,22 @@ async function openBook(name){
   zoomLevel = store.get("zoom:"+name, 1);
   current = Math.min(store.get("pos:"+name, 1) || 1, doc.numPages);
   target = current;
+  // does this book contain real (selectable) text? check a couple of pages
+  bookHasText = await detectBookText();
   render(current);
+}
+
+// sample a few pages to decide if the PDF is text-based or scanned images
+async function detectBookText(){
+  const probes = [current, 1, Math.ceil(doc.numPages/2), doc.numPages]
+    .filter((v,i,a)=>a.indexOf(v)===i && v>=1 && v<=doc.numPages);
+  for(const pn of probes){
+    try{
+      const t = await extractText(await doc.getPage(pn));
+      if(t && t.replace(/\s/g,"").length > 20) return true;
+    }catch(e){}
+  }
+  return false;
 }
 
 async function render(n){
@@ -358,11 +382,66 @@ async function renderText(page){
   tv.style.fontSize = textSize + "px";
   if(!txt || txt.replace(/\s/g,"").length < 3){
     pageHasText = false;
-    tv.innerHTML = '<p class="noText">This page is an image (scanned), so it has no text to resize. Switch Layout to “Page”, then use A− / A+ to zoom.</p>';
+    if(bookHasText){
+      // book is text-based; this page is just artwork (cover, illustration)
+      tv.innerHTML = '<p class="noText">This page is an image (cover or artwork) — turn the page, the rest of the book has resizable text. Or switch Layout to “Page” to see it.</p>';
+    } else {
+      const cached = ocrCache[bookName+":"+current];
+      if(cached){ tv.innerHTML = cached; pageHasText = true; return; }
+      tv.innerHTML = '<p class="noText">This is a scanned page (a picture of text). I can try to read it with OCR and turn it into resizable text.</p>'
+        + '<p style="text-align:center"><button class="tbtn" onclick="runOcr()">🔍 Recognize text (OCR)</button></p>'
+        + '<p class="noText" style="font-size:.85em">Needs internet · works best on clear English scans · or switch Layout to “Page” and zoom.</p>';
+    }
     return;
   }
   pageHasText = true;
   tv.innerHTML = txt.split(/\n\n+/).map(p => "<p>"+esc(p)+"</p>").join("");
+}
+
+/* ---------- OCR for scanned pages (lazy-loaded, cached per page) ---------- */
+const ocrCache = {};
+function loadScript(src){
+  return new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error("load failed"));
+    document.head.appendChild(s);
+  });
+}
+async function runOcr(){
+  if(!doc) return;
+  const tv = $("textView"), pageAtStart = current;
+  try{
+    tv.innerHTML = '<p class="noText">Reading the page… this can take ~10–30 seconds.</p><p class="noText" id="ocrProg"></p>';
+    // draw the page big and sharp for better recognition
+    const page = await doc.getPage(pageAtStart);
+    const vp = page.getViewport({scale: 2});
+    const c = document.createElement("canvas");
+    c.width = vp.width; c.height = vp.height;
+    await page.render({canvasContext: c.getContext("2d"), viewport: vp}).promise;
+    if(!window.Tesseract){
+      const prog = $("ocrProg"); if(prog) prog.textContent = "Loading the reader engine…";
+      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js");
+    }
+    const result = await Tesseract.recognize(c, "eng", {logger: m => {
+      const prog = $("ocrProg");
+      if(prog && m.status === "recognizing text")
+        prog.textContent = "Recognizing… " + Math.round((m.progress||0)*100) + "%";
+    }});
+    if(current !== pageAtStart) return;              // user moved on meanwhile
+    const text = (result && result.data && result.data.text || "").trim();
+    if(!text || text.replace(/\s/g,"").length < 3){
+      tv.innerHTML = '<p class="noText">Couldn’t find readable text on this page. Switch Layout to “Page” and zoom instead.</p>';
+      return;
+    }
+    const htmlOut = text.split(/\n\s*\n+/).map(p => "<p>"+esc(p.replace(/\n/g," "))+"</p>").join("");
+    ocrCache[bookName+":"+pageAtStart] = htmlOut;    // remember for this session
+    pageHasText = true;
+    tv.innerHTML = htmlOut;
+    tv.style.fontSize = textSize + "px";
+    toast("Text recognized — A− / A+ now resizes it. OCR isn’t perfect; forgive small mistakes.");
+  }catch(err){
+    tv.innerHTML = '<p class="noText">OCR couldn’t run (check your internet connection). Switch Layout to “Page” and zoom instead.</p>';
+  }
 }
 
 // pull readable, reflowable text out of a PDF page
@@ -409,9 +488,31 @@ function zoom(d){
     updateNote();
     return;
   }
+  // in Page layout: if the book has real text, A± should resize text like Kindle,
+  // so switch into Reflow automatically. Otherwise (scanned images) zoom the page.
+  if(bookHasText){
+    viewMode = "text";
+    store.set("viewMode", viewMode);
+    updateModeBtn();
+    textSize = Math.max(13, Math.min(46, textSize + (d > 0 ? 2 : -2)));
+    store.set("textSize", textSize);
+    toast("Text mode — A− / A+ now resizes text. Tap ☰ › Layout › Page for the exact page.");
+    render(current);
+    return;
+  }
   zoomLevel = Math.max(0.5, Math.min(3, zoomLevel+d));
   store.set("zoom:"+bookName, zoomLevel);
+  toast("Scanned book — zooming the image. Tip: ☰ › Layout › Reflow offers OCR to make real text.");
   render(current);
+}
+
+let toastTimer=null;
+function toast(msg){
+  let el = $("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove("show"), 3200);
 }
 function openSettings(){
   $("menu").hidden = false;
@@ -433,7 +534,7 @@ function updateNote(){
   if(viewMode === "text"){
     note.textContent = pageHasText
       ? "A− / A+ resizes the text and rewraps it to fit, like Kindle."
-      : "This page is a scanned image — switch to Page layout, then A− / A+ zooms it.";
+      : "This page is an image. Use the OCR button to turn it into text, or switch to Page layout and zoom.";
   } else {
     note.textContent = "Page layout shows the exact PDF. A− / A+ zooms in and out. Try Reflow for resizable text.";
   }
