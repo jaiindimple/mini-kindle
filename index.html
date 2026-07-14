@@ -6,6 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Mini Kindle</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1F4A38">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root{
@@ -55,29 +59,75 @@
   #reader.open{display:flex}
   body.reading #library{display:none}
   body.reading{overscroll-behavior:none}
-  .toolbar{display:flex;align-items:center;gap:6px;padding:6px 10px;flex-wrap:wrap;
-    padding-top:calc(6px + env(safe-area-inset-top));
+  /* ---- top bar: three aligned zones ---- */
+  .toolbar{display:flex;align-items:center;gap:8px;padding:8px 12px;
+    padding-top:calc(8px + env(safe-area-inset-top));
     font-family:var(--sans);border-bottom:1px solid var(--line);background:var(--card)}
-  .toolbar .title{font-family:var(--serif);font-weight:600;font-size:14px;flex:1;min-width:90px;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .tbtn{border:1px solid var(--line);background:transparent;color:inherit;border-radius:4px;
-    padding:8px 11px;font-size:13px}
+  .toolbar .title{font-family:var(--serif);font-weight:600;font-size:15.5px;flex:1;
+    text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tbtn{border:1px solid var(--line);background:transparent;color:inherit;border-radius:8px;
+    padding:9px 12px;font-size:13px;line-height:1;white-space:nowrap}
   .tbtn.active{background:var(--green);border-color:var(--green);color:#fff}
-  #pageBox{width:48px;text-align:center;border:1px solid var(--line);border-radius:4px;
-    padding:7px 2px;font-size:13px;background:transparent;color:inherit}
+  .barlink{border:none;background:none;color:inherit;font-size:14px;font-weight:600;
+    padding:6px 2px;white-space:nowrap;flex:none}
+  /* hamburger menu button */
+  .menu-btn{border:none;background:none;padding:8px 4px;flex:none;
+    display:flex;flex-direction:column;gap:4px;justify-content:center;width:34px}
+  .menu-btn span{display:block;height:2px;width:20px;background:currentColor;border-radius:2px;
+    transition:.2s}
+  .menu-btn.on span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+  .menu-btn.on span:nth-child(2){opacity:0}
+  .menu-btn.on span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+
+  /* ---- dropdown menu ---- */
+  #backdrop{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.15)}
+  #backdrop[hidden]{display:none}
+  #menu{position:fixed;z-index:50;top:calc(52px + env(safe-area-inset-top));right:10px;
+    width:min(290px,calc(100vw - 20px));background:var(--card);color:var(--ink);
+    border:1px solid var(--line);border-radius:14px;padding:6px;
+    box-shadow:0 12px 40px rgba(35,33,28,.25);font-family:var(--sans)}
+  #menu[hidden]{display:none}
+  .menu-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 8px}
+  .menu-row label{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft)}
+  .menu-sep{height:1px;background:var(--line);margin:2px 6px}
+  .segbtns{display:flex;gap:6px}
+  .pagejump{display:flex;align-items:center;gap:5px}
+  #pageBox{width:44px;text-align:center;border:1px solid var(--line);border-radius:8px;
+    padding:8px 2px;font-size:14px;background:transparent;color:inherit}
+  #pageTotal{font-size:13px;color:var(--ink-soft);white-space:nowrap}
+  .menu-note{font-size:11.5px;line-height:1.45;color:var(--ink-soft);padding:4px 8px 8px;margin:0}
+
+  /* page indicator pill */
+  #pagePill{position:fixed;left:50%;transform:translateX(-50%);
+    bottom:calc(10px + env(safe-area-inset-bottom));z-index:20;pointer-events:none;
+    font-family:var(--sans);font-size:12px;padding:4px 12px;border-radius:20px;
+    background:rgba(35,33,28,.55);color:#fff;opacity:0;transition:opacity .3s}
+  #pagePill.show{opacity:1}
+
   #stage{flex:1;overflow:auto;display:flex;padding:12px;
     padding-bottom:calc(12px + env(safe-area-inset-bottom))}
   #pageCanvas{box-shadow:0 4px 24px rgba(0,0,0,.28);height:auto;margin:auto;flex:none}
   #loading{font-family:var(--sans);color:var(--ink-soft);padding:40px;margin:auto}
+  /* reflow / text mode */
+  #textView{width:min(40em,100%);margin:0 auto;padding:6px 6px 60px;line-height:1.62;
+    font-family:var(--serif)}
+  #textView p{margin:0 0 1em;text-align:justify;-webkit-hyphens:auto;hyphens:auto;overflow-wrap:break-word}
+  #textView .noText{font-family:var(--sans);font-style:italic;text-align:center;
+    margin-top:40px;opacity:.75}
 
   /* reading themes */
   body[data-theme="paper"] #reader{background:#DCD7C9}
+  body[data-theme="paper"] #textView{color:#2a2822}
   body[data-theme="sepia"] #reader{background:#D9C7A7}
   body[data-theme="sepia"] .toolbar{background:#EFE0C3;border-color:#C9B893;color:#4A3B25}
+  body[data-theme="sepia"] #menu{background:#EFE0C3;border-color:#C9B893;color:#4A3B25}
   body[data-theme="sepia"] #pageCanvas{filter:sepia(.45) contrast(.96) brightness(.98)}
+  body[data-theme="sepia"] #textView{color:#4A3B25}
   body[data-theme="night"] #reader{background:#14151A}
   body[data-theme="night"] .toolbar{background:#1E2026;border-color:#33363F;color:#C9CAD1}
+  body[data-theme="night"] #menu{background:#1E2026;border-color:#33363F;color:#C9CAD1}
   body[data-theme="night"] #pageCanvas{filter:invert(.93) hue-rotate(180deg) contrast(.92) brightness(.9)}
+  body[data-theme="night"] #textView{color:#C9CAD1}
 </style>
 </head>
 <body data-theme="paper">
@@ -100,19 +150,47 @@
 <!-- ================= READER ================= -->
 <div id="reader">
   <div class="toolbar">
-    <button class="tbtn" onclick="closeReader()">‹ Shelf</button>
+    <button class="barlink" onclick="closeReader()">‹ Shelf</button>
     <span class="title" id="bookTitle"></span>
-    <button class="tbtn" onclick="turn(-1)">‹</button>
-    <input id="pageBox" inputmode="numeric">
-    <span id="pageTotal" style="font-size:13px"></span>
-    <button class="tbtn" onclick="turn(1)">›</button>
-    <button class="tbtn" onclick="zoom(-0.15)">A−</button>
-    <button class="tbtn" onclick="zoom(0.15)">A+</button>
-    <button class="tbtn" id="th-paper" onclick="setTheme('paper')">Day</button>
-    <button class="tbtn" id="th-sepia" onclick="setTheme('sepia')">Sepia</button>
-    <button class="tbtn" id="th-night" onclick="setTheme('night')">Night</button>
+    <button class="menu-btn" id="menuBtn" onclick="toggleSettings()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
   </div>
-  <div id="stage"><div id="loading">Opening book…</div><canvas id="pageCanvas" hidden></canvas></div>
+
+  <div id="backdrop" hidden onclick="closeSettings()"></div>
+  <div id="menu" hidden>
+    <div class="menu-row">
+      <button class="tbtn" onclick="turn(-1)">‹ Prev</button>
+      <span class="pagejump"><input id="pageBox" inputmode="numeric"><span id="pageTotal"></span></span>
+      <button class="tbtn" onclick="turn(1)">Next ›</button>
+    </div>
+    <div class="menu-sep"></div>
+    <div class="menu-row">
+      <label>Text size</label>
+      <div class="segbtns">
+        <button class="tbtn" onclick="zoom(-0.15)">A−</button>
+        <button class="tbtn" onclick="zoom(0.15)">A+</button>
+      </div>
+    </div>
+    <div class="menu-row">
+      <label>Theme</label>
+      <div class="segbtns">
+        <button class="tbtn" id="th-paper" onclick="setTheme('paper')">Day</button>
+        <button class="tbtn" id="th-sepia" onclick="setTheme('sepia')">Sepia</button>
+        <button class="tbtn" id="th-night" onclick="setTheme('night')">Night</button>
+      </div>
+    </div>
+    <div class="menu-row">
+      <label>Layout</label>
+      <div class="segbtns">
+        <button class="tbtn" id="modeBtn" onclick="toggleMode()">Reflow</button>
+      </div>
+    </div>
+    <p class="menu-note" id="menuNote"></p>
+  </div>
+
+  <div id="stage"><div id="loading">Opening book…</div><canvas id="pageCanvas" hidden></canvas><div id="textView" hidden></div></div>
+  <div id="pagePill"></div>
 </div>
 
 <script>
@@ -199,13 +277,17 @@ $("file").onchange = async e => {
 
 /* ---------- reader ---------- */
 let doc=null, current=1, target=1, zoomLevel=1, bookName="", rendering=false, pending=null;
+let viewMode = store.get("viewMode","page");     // "page" (exact) or "text" (reflow)
+let textSize = store.get("textSize", 19);         // font size for reflow mode
+let pageHasText = true;                            // does the current page have extractable text
 
 async function openBook(name){
   bookName = name;
   document.body.classList.add("reading");
   $("reader").classList.add("open");
   $("bookTitle").textContent = name.replace(/\.pdf$/i,"");
-  $("loading").hidden = false; $("pageCanvas").hidden = true;
+  $("loading").hidden = false; $("pageCanvas").hidden = true; $("textView").hidden = true;
+  updateModeBtn();
   const rec = await idb.get(name);
   if(!rec){ alert("Book not found."); return closeReader(); }
   doc = await pdfjsLib.getDocument({data: rec.data.slice(0)}).promise;
@@ -224,6 +306,30 @@ async function render(n){
   current = Math.max(1, Math.min(n, doc.numPages));
   target = current;
   const page = await doc.getPage(current);
+  if(viewMode === "text") await renderText(page);
+  else await renderPage(page);
+  $("pageBox").value = current;
+  store.set("pos:"+bookName, current);          // remember where I am
+  $("stage").scrollTop = 0;
+  $("stage").scrollLeft = 0;
+  showPill();
+  updateNote();
+  rendering = false;
+  if(pending!==null){const p=pending;pending=null;render(p);}
+}
+
+let pillTimer=null;
+function showPill(){
+  if(!doc) return;
+  const pill = $("pagePill");
+  pill.textContent = current + " / " + doc.numPages;
+  pill.classList.add("show");
+  clearTimeout(pillTimer);
+  pillTimer = setTimeout(()=>pill.classList.remove("show"), 1600);
+}
+
+async function renderPage(page){
+  $("textView").hidden = true;
   const stageW = $("stage").clientWidth - 24;
   const base = page.getViewport({scale:1});
   const scale = (stageW / base.width) * zoomLevel;
@@ -241,12 +347,53 @@ async function render(n){
   canvas.style.width = displayW + "px";
   await page.render({canvasContext:canvas.getContext("2d"), viewport:vp}).promise;
   $("loading").hidden = true; canvas.hidden = false;
-  $("pageBox").value = current;
-  store.set("pos:"+bookName, current);          // remember where I am
-  $("stage").scrollTop = 0;
-  $("stage").scrollLeft = 0;
-  rendering = false;
-  if(pending!==null){const p=pending;pending=null;render(p);}
+}
+
+async function renderText(page){
+  const txt = await extractText(page);
+  const tv = $("textView");
+  $("pageCanvas").hidden = true;
+  $("loading").hidden = true;
+  tv.hidden = false;
+  tv.style.fontSize = textSize + "px";
+  if(!txt || txt.replace(/\s/g,"").length < 3){
+    pageHasText = false;
+    tv.innerHTML = '<p class="noText">This page is an image (scanned), so it has no text to resize. Switch Layout to “Page”, then use A− / A+ to zoom.</p>';
+    return;
+  }
+  pageHasText = true;
+  tv.innerHTML = txt.split(/\n\n+/).map(p => "<p>"+esc(p)+"</p>").join("");
+}
+
+// pull readable, reflowable text out of a PDF page
+async function extractText(page){
+  const tc = await page.getTextContent();
+  const items = tc.items.filter(i => typeof i.str === "string");
+  if(!items.length) return "";
+  const heights = items.map(i => Math.abs(i.transform[3]) || i.height || 0)
+                       .filter(h => h > 0).sort((a,b)=>a-b);
+  const lineH = heights.length ? heights[Math.floor(heights.length/2)] : 12;
+  let out = "", prevY = null, prevXEnd = null;
+  for(const it of items){
+    const x = it.transform[4], y = it.transform[5], w = it.width || 0;
+    if(prevY !== null){
+      const gap = prevY - y;
+      if(Math.abs(gap) > lineH * 1.8){                 // big jump = new paragraph
+        out = out.replace(/ +$/,"") + "\n\n";
+        prevXEnd = null;
+      } else if(Math.abs(gap) > lineH * 0.4){          // next visual line
+        if(out.endsWith("-")) out = out.slice(0,-1);   // join hyphenated word
+        else if(!/\s$/.test(out)) out += " ";
+        prevXEnd = null;
+      } else if(prevXEnd !== null && x - prevXEnd > lineH*0.25
+                && !/\s$/.test(out) && it.str && !/^\s/.test(it.str)){
+        out += " ";                                    // gap on same line
+      }
+    }
+    out += it.str;
+    prevY = y; prevXEnd = x + w;
+  }
+  return out.replace(/\n{3,}/g,"\n\n").trim();
 }
 
 function turn(d){
@@ -255,8 +402,54 @@ function turn(d){
   render(target);
 }
 function zoom(d){
+  if(viewMode === "text"){
+    textSize = Math.max(13, Math.min(46, textSize + (d > 0 ? 2 : -2)));
+    store.set("textSize", textSize);
+    $("textView").style.fontSize = textSize + "px";   // instant reflow, no re-render
+    updateNote();
+    return;
+  }
   zoomLevel = Math.max(0.5, Math.min(3, zoomLevel+d));
   store.set("zoom:"+bookName, zoomLevel);
+  render(current);
+}
+function openSettings(){
+  $("menu").hidden = false;
+  $("backdrop").hidden = false;
+  $("menuBtn").classList.add("on");
+  updateNote();
+}
+function closeSettings(){
+  $("menu").hidden = true;
+  $("backdrop").hidden = true;
+  $("menuBtn").classList.remove("on");
+}
+function toggleSettings(){
+  if($("menu").hidden) openSettings(); else closeSettings();
+}
+function updateNote(){
+  const note = $("menuNote");
+  if(!note) return;
+  if(viewMode === "text"){
+    note.textContent = pageHasText
+      ? "A− / A+ resizes the text and rewraps it to fit, like Kindle."
+      : "This page is a scanned image — switch to Page layout, then A− / A+ zooms it.";
+  } else {
+    note.textContent = "Page layout shows the exact PDF. A− / A+ zooms in and out. Try Reflow for resizable text.";
+  }
+}
+function updateModeBtn(){
+  const b = $("modeBtn");
+  if(!b) return;
+  b.textContent = viewMode === "text" ? "Page" : "Reflow";
+  b.title = viewMode === "text"
+    ? "Switch to the exact original page"
+    : "Switch to resizable, reflowing text (Kindle-style)";
+}
+function toggleMode(){
+  viewMode = viewMode === "text" ? "page" : "text";
+  store.set("viewMode", viewMode);
+  updateModeBtn();
   render(current);
 }
 $("pageBox").addEventListener("change", e=>{
@@ -266,6 +459,7 @@ $("pageBox").addEventListener("change", e=>{
 function closeReader(){
   document.body.classList.remove("reading");
   $("reader").classList.remove("open");
+  closeSettings();
   doc = null;
   loadShelf();
 }
