@@ -110,14 +110,32 @@
     font-family:var(--sans);font-size:12.5px;line-height:1.4;padding:10px 14px;border-radius:12px;
     background:rgba(35,33,28,.9);color:#fff;opacity:0;transition:opacity .25s}
   #toast.show{opacity:1}
+  /* center-tap browse panel (Kindle-style scrubber) */
+  #browse{position:fixed;left:0;right:0;bottom:0;z-index:45;
+    padding:10px 16px calc(14px + env(safe-area-inset-bottom));
+    background:var(--card);border-top:1px solid var(--line);
+    font-family:var(--sans);display:flex;flex-direction:column;gap:8px;
+    box-shadow:0 -8px 30px rgba(35,33,28,.15)}
+  #browse[hidden]{display:none}
+  .browse-top{display:flex;align-items:center;gap:12px;min-height:60px}
+  #thumbCanvas{border:2px solid var(--green);border-radius:4px;background:#fff;flex:none;
+    box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  #browseLabel{font-size:13px;color:var(--ink-soft);flex:1;text-align:center}
+  #slider{width:100%;accent-color:var(--green);height:28px}
+  body[data-theme="sepia"] #browse{background:#EFE0C3;border-color:#C9B893;color:#4A3B25}
+  body[data-theme="night"] #browse{background:#1E2026;border-color:#33363F;color:#C9CAD1}
 
   #stage{flex:1;overflow:auto;display:flex;padding:12px;
     padding-bottom:calc(12px + env(safe-area-inset-bottom))}
   #pageCanvas{box-shadow:0 4px 24px rgba(0,0,0,.28);height:auto;margin:auto;flex:none}
   #loading{font-family:var(--sans);color:var(--ink-soft);padding:40px;margin:auto}
   /* reflow / text mode */
-  #textView{width:min(40em,100%);margin:0 auto;padding:6px 6px 60px;line-height:1.62;
+  #textView{width:min(40em,100%);margin:0 auto;padding:26px 28px 90px;line-height:1.62;
     font-family:var(--serif)}
+  body[data-margin="narrow"] #textView{padding-left:10px;padding-right:10px;padding-top:12px}
+  body[data-margin="wide"] #textView{padding-left:48px;padding-right:48px;padding-top:36px}
+  body[data-margin="narrow"] #stage{padding-left:4px;padding-right:4px}
+  body[data-margin="wide"] #stage{padding-left:30px;padding-right:30px}
   #textView p{margin:0 0 1em;text-align:justify;-webkit-hyphens:auto;hyphens:auto;overflow-wrap:break-word}
   #textView .noText{font-family:var(--sans);font-style:italic;text-align:center;
     margin-top:40px;opacity:.75}
@@ -188,6 +206,14 @@
       </div>
     </div>
     <div class="menu-row">
+      <label>Margins</label>
+      <div class="segbtns">
+        <button class="tbtn" id="mg-narrow" onclick="setMargin('narrow')">Narrow</button>
+        <button class="tbtn" id="mg-medium" onclick="setMargin('medium')">Medium</button>
+        <button class="tbtn" id="mg-wide" onclick="setMargin('wide')">Wide</button>
+      </div>
+    </div>
+    <div class="menu-row">
       <label>Layout</label>
       <div class="segbtns">
         <button class="tbtn" id="modeBtn" onclick="toggleMode()">Reflow</button>
@@ -197,6 +223,14 @@
   </div>
 
   <div id="stage"><div id="loading">Opening book…</div><canvas id="pageCanvas" hidden></canvas><div id="textView" hidden></div></div>
+  <div id="browse" hidden>
+    <div class="browse-top">
+      <canvas id="thumbCanvas" width="84" height="118"></canvas>
+      <span id="browseLabel"></span>
+      <button class="tbtn" id="backBtn" hidden onclick="backJump()"></button>
+    </div>
+    <input type="range" id="slider" min="1" max="1" step="1" value="1">
+  </div>
   <div id="pagePill"></div>
   <div id="toast"></div>
 </div>
@@ -338,6 +372,10 @@ async function render(n){
   $("stage").scrollLeft = 0;
   showPill();
   updateNote();
+  if(!$("browse").hidden){                        // keep scrubber in sync
+    $("slider").value = current;
+    updateBrowseLabel(current);
+  }
   rendering = false;
   if(pending!==null){const p=pending;pending=null;render(p);}
 }
@@ -561,6 +599,7 @@ function closeReader(){
   document.body.classList.remove("reading");
   $("reader").classList.remove("open");
   closeSettings();
+  closeBrowse();
   doc = null;
   loadShelf();
 }
@@ -573,6 +612,75 @@ function setTheme(t){
     $("th-"+x).classList.toggle("active", x===t);
 }
 setTheme(store.get("theme","paper"));
+
+/* margins (Kindle-style breathing room) */
+function setMargin(m){
+  document.body.dataset.margin = m;
+  store.set("margin", m);
+  for(const x of ["narrow","medium","wide"])
+    $("mg-"+x).classList.toggle("active", x===m);
+  if(doc) render(current);          // page width changes, so redraw
+}
+setMargin(store.get("margin","medium"));
+
+/* ---------- center-tap browse (scrubber with preview) ---------- */
+let browseFrom = null, thumbTask = null, thumbTimer = null;
+function toggleBrowse(){
+  if(!doc) return;
+  if($("browse").hidden) openBrowse(); else closeBrowse();
+}
+function openBrowse(){
+  browseFrom = current;
+  const s = $("slider");
+  s.min = 1; s.max = doc.numPages; s.value = current;
+  $("backBtn").hidden = true;
+  updateBrowseLabel(current);
+  $("browse").hidden = false;
+  drawThumb(current);
+}
+function closeBrowse(){ $("browse").hidden = true; }
+function updateBrowseLabel(n){
+  $("browseLabel").textContent =
+    "Page " + n + " of " + doc.numPages + " · " + Math.round(n/doc.numPages*100) + "%";
+}
+$("slider").addEventListener("input", e=>{        // while dragging: preview only
+  const n = +e.target.value;
+  updateBrowseLabel(n);
+  clearTimeout(thumbTimer);
+  thumbTimer = setTimeout(()=>drawThumb(n), 120);
+});
+$("slider").addEventListener("change", e=>{       // released: actually go there
+  const n = +e.target.value;
+  if(n !== browseFrom){
+    $("backBtn").textContent = "Back to " + browseFrom;
+    $("backBtn").hidden = false;
+  }
+  render(n);
+});
+function backJump(){
+  if(browseFrom){
+    render(browseFrom);
+    $("slider").value = browseFrom;
+    updateBrowseLabel(browseFrom);
+    drawThumb(browseFrom);
+    $("backBtn").hidden = true;
+  }
+}
+async function drawThumb(n){
+  try{
+    if(thumbTask){ try{thumbTask.cancel();}catch(e){} thumbTask = null; }
+    const page = await doc.getPage(Math.max(1, Math.min(n, doc.numPages)));
+    const c = $("thumbCanvas");
+    const base = page.getViewport({scale:1});
+    const scale = (84 / base.width) * 2;            // 2x for sharpness
+    const vp = page.getViewport({scale});
+    c.width = vp.width; c.height = vp.height;
+    c.style.width = "84px"; c.style.height = (vp.height/2)+"px";
+    thumbTask = page.render({canvasContext:c.getContext("2d"), viewport:vp});
+    await thumbTask.promise;
+    thumbTask = null;
+  }catch(err){ /* cancelled mid-scrub — fine */ }
+}
 
 /* swipe or tap edges to turn pages */
 let tx=0, ty=0, tt=0;
@@ -590,11 +698,12 @@ stage.addEventListener("touchend", e=>{
     turn(dx < 0 ? 1 : -1);
     return;
   }
-  // tap zones: quick tap on right third = next, left third = previous
+  // tap zones: right third = next, left third = previous, middle = browse
   if(Math.abs(dx) < 10 && Math.abs(dy) < 10 && Date.now() - tt < 350){
     const x = e.changedTouches[0].clientX, w = window.innerWidth;
     if(x > w*0.66) turn(1);
     else if(x < w*0.33) turn(-1);
+    else toggleBrowse();
   }
 }, {passive:true});
 
