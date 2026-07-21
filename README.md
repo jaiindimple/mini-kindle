@@ -9,12 +9,24 @@ Your PDF books are stored *inside your phone's browser* (IndexedDB). Nothing is 
 ## Features
 
 - **Add your own PDFs** and read them like books
-- **Remembers your page** — close it anytime, it reopens exactly where you left off (per book)
-- **Reading modes** — Day, Sepia, and Night (dark) themes
-- **Kindle-style controls** — swipe to turn pages, or tap the left/right edge of the page
-- **Zoom** text size with A− / A+
-- **Progress tracking** — shelf shows a bookmark ribbon, current page, and % complete
-- Works on **iPhone, Android, and computers**
+- **Kindle-style pages** — in Reflow layout the text is split into clean, screen-sized
+  pages. Nothing ever runs off the edge or spills onto the next screen, and making the
+  text bigger simply creates more pages — just like a real e-reader
+- **Two layouts** — *Reflow* (resizable, reflowing text) or *Page* (the exact PDF, for
+  scans, diagrams, and fixed layouts)
+- **Highlight as you read** — select any text, pick a colour (yellow / green / pink /
+  blue), and it's saved in your browser. A **Highlights** panel lists them all so you can
+  jump straight back to any passage
+- **Remembers your place** — close it anytime, it reopens on the exact page *and* screen
+  you left off (per book)
+- **Soft, book-like paper** — Day, Sepia, and Night themes tuned to be gentle on the eyes
+- **Typography controls** — text size, line spacing, serif/sans typeface, and page margins
+- **Kindle-style navigation** — swipe or tap the left/right edge to turn pages, tap the
+  middle for a page scrubber with live thumbnails, or use the arrow keys on a computer
+- **OCR for scanned books** — turn a picture-of-text page into real, resizable text
+- **Progress tracking** — the shelf shows a bookmark ribbon, current page, and % complete
+- **Responsive** — a comfortable single-column book page on phones, a centred book-like
+  page on desktop. Works on **iPhone, Android, and computers**
 
 ## Quick start (easiest way — works for both iPhone & Android)
 
@@ -61,27 +73,14 @@ your books and bookmarks live.
 | Action | How |
 |---|---|
 | Open a book | Tap its title on the shelf |
-| Next / previous page | Swipe left/right, tap right/left third of the page, or use ‹ › |
-| Jump to a page | Type the page number in the box |
-| Text size | A− / A+ buttons |
-| Reading mode | Day / Sepia / Night buttons |
-| Back to shelf | ‹ Shelf button |
-| Remove a book | "remove" on the book card |
-
-## 💻 Run it on a computer instead (Python version)
-
-The `local-server/` folder contains a version that stores books as normal files on disk,
-served by a zero-dependency Python server:
-
-```bash
-cd local-server
-python3 app.py
-# open http://localhost:8765
-```
-
-Books are saved to a `books/` folder next to `app.py`. To read from your phone on the
-same Wi-Fi, change `127.0.0.1` to `0.0.0.0` in the last line of `app.py` and open
-`http://YOUR-COMPUTER-IP:8765` on the phone.
+| Next / previous page | Swipe left/right, tap the right/left edge, or arrow keys / spacebar |
+| Jump to a page | Tap the middle of the page (or the progress bar) for the scrubber |
+| Highlight text | Select text → pick a colour in the popup (Reflow layout) |
+| Review / jump to highlights | Tap the **▤** button in the top bar |
+| Text size | ☰ menu → Text size A− / A＋ (or `+` / `−` keys) |
+| Layout, spacing, typeface, margins, theme | ☰ menu |
+| Back to shelf | ‹ Shelf button (or Esc) |
+| Remove a book | "remove" on the book card (highlights are kept) |
 
 ## Good to know
 
@@ -89,9 +88,9 @@ same Wi-Fi, change `127.0.0.1` to `0.0.0.0` in the last line of `app.py` and ope
   browser's storage and never leave your device.
 - **Internet:** needed the first time you open the app (it loads the PDF renderer,
   PDF.js, from a CDN). After that your browser usually caches it.
-- **Backups:** keep your original PDFs in your Files app / storage too. Bookmarks and
-  books are tied to the exact web address you use, so if you ever change hosting, you'd
-  re-add books there.
+- **Backups:** keep your original PDFs in your Files app / storage too. Your books,
+  reading position, and highlights are tied to the exact web address you use, so if you
+  ever change hosting, you'd re-add books there.
 - **Big books:** very large PDFs (hundreds of MB) may hit browser storage limits — add
   them one at a time.
 
