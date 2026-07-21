@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Mini Kindle</title>
@@ -12,150 +12,228 @@
 <meta name="theme-color" content="#1F4A38">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
+  /* ============================================================
+     THEME TOKENS — soft, book-like palettes (easy on the eyes)
+     ============================================================ */
+  body[data-theme="paper"]{
+    --bg:#f3efe6; --paper:#fbf9f3; --edge:#efe9dc;
+    --ink:#2b2822; --ink-soft:#7a7466; --line:#e2ddd0;
+    --ui:#fbf9f3; --ui-line:#e2ddd0; --accent:#1f4a38; --accent-soft:#2e6b51;
+    --shadow:0 6px 30px rgba(60,52,38,.16);
+  }
+  body[data-theme="sepia"]{
+    --bg:#e2d4b4; --paper:#efe2c4; --edge:#e6d7b6;
+    --ink:#463824; --ink-soft:#8a7551; --line:#cdba92;
+    --ui:#efe2c4; --ui-line:#d3c199; --accent:#8a5a2b; --accent-soft:#a06b34;
+    --shadow:0 6px 30px rgba(90,66,30,.20);
+  }
+  body[data-theme="night"]{
+    --bg:#0e0f13; --paper:#181a20; --edge:#14161b;
+    --ink:#c7c9d1; --ink-soft:#767a86; --line:#282b33;
+    --ui:#181a20; --ui-line:#2a2d36; --accent:#5f9e83; --accent-soft:#6fae92;
+    --shadow:0 6px 30px rgba(0,0,0,.55);
+  }
+
   :root{
-    --linen:#EFEDE6; --ink:#23211C; --ink-soft:#6B665B;
-    --green:#1F4A38; --green-soft:#2E6B51; --card:#FBFAF6;
-    --line:#D8D4C8; --ribbon:#B23A2E;
-    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
-    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Charter","Georgia",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --colgap:56px;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  button,input{touch-action:manipulation}
-  body{background:var(--linen);color:var(--ink);font-family:var(--serif);min-height:100vh}
-  button{font-family:var(--sans);cursor:pointer}
+  html,body{height:100%}
+  button,input,select{touch-action:manipulation;font-family:var(--sans)}
+  body{background:var(--bg);color:var(--ink);font-family:var(--serif);
+    min-height:100vh;-webkit-text-size-adjust:100%;
+    transition:background .35s ease,color .35s ease}
+  button{cursor:pointer}
+  ::selection{background:rgba(120,160,255,.35)}
 
-  /* ---------- LIBRARY ---------- */
-  #library{max-width:960px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 18px 80px}
-  .masthead{display:flex;align-items:baseline;justify-content:space-between;
-    border-bottom:3px double var(--ink);padding-bottom:12px;gap:16px;flex-wrap:wrap}
-  .masthead h1{font-size:30px;font-weight:600;letter-spacing:.5px}
-  .masthead h1 em{font-style:italic;color:var(--green)}
-  .shelf-count{font-family:var(--sans);font-size:13px;color:var(--ink-soft)}
-  .upload-row{display:flex;gap:10px;align-items:center;margin:16px 0 26px;flex-wrap:wrap}
-  .btn{border:1.5px solid var(--ink);background:var(--card);color:var(--ink);
-    padding:11px 18px;border-radius:4px;font-size:15px}
-  .btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+  /* ============================================================
+     LIBRARY
+     ============================================================ */
+  #library{max-width:1040px;margin:0 auto;
+    padding:calc(24px + env(safe-area-inset-top)) 20px 90px}
+  .masthead{display:flex;align-items:flex-end;justify-content:space-between;
+    border-bottom:2px solid var(--line);padding-bottom:14px;gap:16px;flex-wrap:wrap}
+  .masthead h1{font-size:32px;font-weight:600;letter-spacing:.4px}
+  .masthead h1 em{font-style:italic;color:var(--accent)}
+  .shelf-count{font-family:var(--sans);font-size:13px;color:var(--ink-soft);padding-bottom:4px}
+  .upload-row{display:flex;gap:12px;align-items:center;margin:18px 0 24px;flex-wrap:wrap}
+  .btn{border:1.5px solid var(--line);background:var(--paper);color:var(--ink);
+    padding:11px 18px;border-radius:10px;font-size:15px;font-weight:500;
+    transition:transform .08s ease,box-shadow .2s ease}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow)}
   .hint{font-family:var(--sans);font-size:12.5px;color:var(--ink-soft)}
+  #status{font-family:var(--sans);font-size:13px;color:var(--accent-soft);
+    min-height:18px;margin-bottom:10px}
 
-  .shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
-  .book{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--green);
-    border-radius:3px;padding:16px 14px 12px;position:relative;display:flex;flex-direction:column;
-    min-height:130px;box-shadow:0 1px 0 rgba(0,0,0,.05)}
-  .book .title{font-size:15.5px;line-height:1.35;font-weight:600;overflow-wrap:anywhere;flex:1}
-  .book .meta{font-family:var(--sans);font-size:11.5px;color:var(--ink-soft);margin-top:10px}
-  .book .bar{height:4px;background:var(--line);border-radius:2px;margin-top:8px;overflow:hidden}
-  .book .bar i{display:block;height:100%;background:var(--green)}
-  .book .ribbon{position:absolute;top:-4px;right:12px;width:13px;height:30px;background:var(--ribbon);
-    clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%);display:none}
+  .shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:18px}
+  .book{background:var(--paper);border:1px solid var(--line);border-radius:12px;
+    padding:18px 16px 14px;position:relative;display:flex;flex-direction:column;
+    min-height:150px;box-shadow:0 2px 10px rgba(60,52,38,.07);
+    transition:transform .12s ease,box-shadow .2s ease;overflow:hidden}
+  .book::before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;
+    background:linear-gradient(var(--accent),var(--accent-soft))}
+  .book:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(60,52,38,.14)}
+  .book .title{font-size:16px;line-height:1.35;font-weight:600;
+    overflow-wrap:anywhere;flex:1;padding-left:6px}
+  .book .meta{font-family:var(--sans);font-size:11.5px;color:var(--ink-soft);
+    margin-top:12px;padding-left:6px}
+  .book .bar{height:5px;background:var(--line);border-radius:3px;margin:8px 0 0 6px;overflow:hidden}
+  .book .bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+  .book .ribbon{position:absolute;top:-2px;right:14px;width:14px;height:26px;
+    background:#b23a2e;clip-path:polygon(0 0,100% 0,100% 100%,50% 74%,0 100%);display:none}
   .book.started .ribbon{display:block}
-  .book .del{position:absolute;bottom:8px;right:8px;border:none;background:none;
-    color:var(--ink-soft);font-size:12px;padding:6px}
-  .empty{border:1.5px dashed var(--line);border-radius:6px;padding:50px 20px;text-align:center;
+  .book .del{position:absolute;bottom:10px;right:10px;border:none;background:none;
+    color:var(--ink-soft);font-size:12px;font-family:var(--sans);padding:6px;border-radius:6px}
+  .book .del:hover{color:#b23a2e}
+  .empty{border:1.5px dashed var(--line);border-radius:14px;padding:60px 20px;text-align:center;
     color:var(--ink-soft);font-style:italic;font-size:16px}
-  #status{font-family:var(--sans);font-size:13px;color:var(--green);min-height:18px;margin-bottom:8px}
 
-  /* ---------- READER ---------- */
-  #reader{display:none;flex-direction:column;height:100vh;height:100dvh}
+  /* ============================================================
+     READER SHELL
+     ============================================================ */
+  #reader{display:none;flex-direction:column;height:100vh;height:100dvh;background:var(--bg)}
   #reader.open{display:flex}
   body.reading #library{display:none}
-  body.reading{overscroll-behavior:none}
-  /* ---- top bar: three aligned zones ---- */
-  .toolbar{display:flex;align-items:center;gap:8px;padding:8px 12px;
-    padding-top:calc(8px + env(safe-area-inset-top));
-    font-family:var(--sans);border-bottom:1px solid var(--line);background:var(--card)}
-  .toolbar .title{font-family:var(--serif);font-weight:600;font-size:15.5px;flex:1;
-    text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .tbtn{border:1px solid var(--line);background:transparent;color:inherit;border-radius:8px;
-    padding:9px 12px;font-size:13px;line-height:1;white-space:nowrap}
-  .tbtn.active{background:var(--green);border-color:var(--green);color:#fff}
+  body.reading{overflow:hidden;overscroll-behavior:none}
+
+  .toolbar{display:flex;align-items:center;gap:6px;padding:8px 10px;
+    padding-top:calc(8px + env(safe-area-inset-top));font-family:var(--sans);
+    background:var(--ui);border-bottom:1px solid var(--ui-line);z-index:10}
+  .toolbar .title{font-family:var(--serif);font-weight:600;font-size:15px;flex:1;
+    text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
   .barlink{border:none;background:none;color:inherit;font-size:14px;font-weight:600;
-    padding:6px 2px;white-space:nowrap;flex:none}
-  /* hamburger menu button */
-  .menu-btn{border:none;background:none;padding:8px 4px;flex:none;
-    display:flex;flex-direction:column;gap:4px;justify-content:center;width:34px}
-  .menu-btn span{display:block;height:2px;width:20px;background:currentColor;border-radius:2px;
-    transition:.2s}
+    padding:8px 6px;white-space:nowrap;flex:none;border-radius:8px}
+  .icon-btn{border:none;background:none;color:inherit;padding:8px;flex:none;
+    border-radius:9px;width:40px;height:40px;display:flex;align-items:center;
+    justify-content:center;font-size:18px;line-height:1}
+  .icon-btn:hover{background:rgba(127,127,127,.12)}
+  .icon-btn.on{color:var(--accent)}
+  /* hamburger */
+  .menu-btn{flex-direction:column;gap:4px}
+  .menu-btn span{display:block;height:2px;width:19px;background:currentColor;border-radius:2px;transition:.2s}
   .menu-btn.on span:nth-child(1){transform:translateY(6px) rotate(45deg)}
   .menu-btn.on span:nth-child(2){opacity:0}
   .menu-btn.on span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
 
-  /* ---- dropdown menu ---- */
-  #backdrop{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.15)}
+  /* ---- reading stage ---- */
+  #stage{flex:1;position:relative;overflow:hidden;min-height:0}
+  #loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--sans);color:var(--ink-soft);font-size:14px}
+
+  /* PAGE (exact PDF) mode */
+  #canvasScroll{position:absolute;inset:0;overflow:auto;display:flex;
+    padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+  #canvasScroll[hidden]{display:none}
+  #pageCanvas{margin:auto;flex:none;height:auto;border-radius:3px;
+    box-shadow:0 6px 30px rgba(0,0,0,.25);background:#fff}
+  body[data-theme="sepia"] #pageCanvas{filter:sepia(.4) contrast(.97) brightness(.99)}
+  body[data-theme="night"] #pageCanvas{filter:invert(.92) hue-rotate(180deg) contrast(.9) brightness(.92)}
+
+  /* TEXT (reflow, paginated) mode — the book "page" */
+  #paper{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    padding:14px}
+  #paper[hidden]{display:none}
+  #sheet{background:var(--paper);border:1px solid var(--edge);border-radius:6px;
+    box-shadow:var(--shadow);width:min(46em,100%);height:100%;max-height:100%;
+    position:relative;overflow:hidden;display:flex;flex-direction:column}
+  #colWrap{position:absolute;overflow:hidden}
+  #cols{height:100%;column-fill:auto;font-family:var(--serif);color:var(--ink);
+    text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;
+    transition:transform .28s cubic-bezier(.22,.61,.36,1)}
+  #cols p{margin:0 0 .9em;text-align:justify;text-justify:inter-word;
+    -webkit-hyphens:auto;hyphens:auto;overflow-wrap:break-word;
+    orphans:2;widows:2}
+  #cols p:first-child{margin-top:0}
+  #cols mark.hl{border-radius:2px;padding:.05em 0;color:inherit;
+    box-decoration-break:clone;-webkit-box-decoration-break:clone;cursor:pointer}
+  #cols .noText{font-family:var(--sans);font-style:italic;text-align:center;
+    color:var(--ink-soft);margin-top:20%}
+  #cols .noText button{margin-top:14px}
+
+  /* margins (breathing room) */
+  body[data-margin="narrow"] #sheet{width:min(52em,100%)}
+  body[data-margin="wide"]   #sheet{width:min(38em,100%)}
+
+  /* ---- selection highlight toolbar ---- */
+  #selbar{position:fixed;z-index:70;display:flex;gap:8px;align-items:center;
+    padding:8px 10px;border-radius:14px;background:var(--ui);
+    border:1px solid var(--ui-line);box-shadow:0 10px 34px rgba(0,0,0,.28);
+    transform:translate(-50%,-100%)}
+  #selbar[hidden]{display:none}
+  .swatch{width:26px;height:26px;border-radius:50%;border:2px solid rgba(0,0,0,.12);padding:0}
+  #selbar .icon-btn{width:34px;height:34px;font-size:15px}
+
+  /* ---- bottom progress bar ---- */
+  #footer{position:relative;z-index:10;background:var(--ui);border-top:1px solid var(--ui-line);
+    padding:6px 14px calc(8px + env(safe-area-inset-bottom));font-family:var(--sans)}
+  #progWrap{height:4px;background:var(--line);border-radius:3px;overflow:hidden;cursor:pointer}
+  #progWrap i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+  #progLabel{display:flex;justify-content:space-between;font-size:11.5px;
+    color:var(--ink-soft);margin-top:5px}
+
+  /* ============================================================
+     SHEETS & MENUS
+     ============================================================ */
+  #backdrop{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.22)}
   #backdrop[hidden]{display:none}
-  #menu{position:fixed;z-index:50;top:calc(52px + env(safe-area-inset-top));right:10px;
-    width:min(290px,calc(100vw - 20px));background:var(--card);color:var(--ink);
-    border:1px solid var(--line);border-radius:14px;padding:6px;
-    box-shadow:0 12px 40px rgba(35,33,28,.25);font-family:var(--sans)}
-  #menu[hidden]{display:none}
-  .menu-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 8px}
-  .menu-row label{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft)}
-  .menu-sep{height:1px;background:var(--line);margin:2px 6px}
-  .segbtns{display:flex;gap:6px}
-  .pagejump{display:flex;align-items:center;gap:5px}
-  #pageBox{width:44px;text-align:center;border:1px solid var(--line);border-radius:8px;
-    padding:8px 2px;font-size:14px;background:transparent;color:inherit}
-  #pageTotal{font-size:13px;color:var(--ink-soft);white-space:nowrap}
-  .menu-note{font-size:11.5px;line-height:1.45;color:var(--ink-soft);padding:4px 8px 8px;margin:0}
 
-  /* page indicator pill */
-  #pagePill{position:fixed;left:50%;transform:translateX(-50%);
-    bottom:calc(10px + env(safe-area-inset-bottom));z-index:20;pointer-events:none;
-    font-family:var(--sans);font-size:12px;padding:4px 12px;border-radius:20px;
-    background:rgba(35,33,28,.55);color:#fff;opacity:0;transition:opacity .3s}
-  #pagePill.show{opacity:1}
-  /* toast message */
-  #toast{position:fixed;left:50%;transform:translateX(-50%);
-    bottom:calc(44px + env(safe-area-inset-bottom));z-index:60;pointer-events:none;
-    max-width:min(340px,calc(100vw - 32px));text-align:center;
-    font-family:var(--sans);font-size:12.5px;line-height:1.4;padding:10px 14px;border-radius:12px;
-    background:rgba(35,33,28,.9);color:#fff;opacity:0;transition:opacity .25s}
-  #toast.show{opacity:1}
-  /* center-tap browse panel (Kindle-style scrubber) */
-  #browse{position:fixed;left:0;right:0;bottom:0;z-index:45;
-    padding:10px 16px calc(14px + env(safe-area-inset-bottom));
-    background:var(--card);border-top:1px solid var(--line);
-    font-family:var(--sans);display:flex;flex-direction:column;gap:8px;
-    box-shadow:0 -8px 30px rgba(35,33,28,.15)}
-  #browse[hidden]{display:none}
-  .browse-top{display:flex;align-items:center;gap:12px;min-height:60px}
-  #thumbCanvas{border:2px solid var(--green);border-radius:4px;background:#fff;flex:none;
-    box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  .sheet{position:fixed;z-index:50;left:50%;transform:translateX(-50%);
+    bottom:0;width:min(520px,100%);background:var(--ui);color:var(--ink);
+    border:1px solid var(--ui-line);border-bottom:none;
+    border-radius:18px 18px 0 0;padding:10px 14px calc(16px + env(safe-area-inset-bottom));
+    box-shadow:0 -12px 40px rgba(0,0,0,.22);font-family:var(--sans);
+    max-height:min(78vh,620px);overflow:auto}
+  .sheet[hidden]{display:none}
+  .grab{width:40px;height:4px;border-radius:3px;background:var(--line);margin:2px auto 12px}
+  .sheet h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--ink-soft);font-weight:600;margin:4px 2px 2px}
+
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 4px}
+  .row label{font-size:13px;color:var(--ink)}
+  .seg{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .seg button{border:1px solid var(--ui-line);background:transparent;color:inherit;
+    border-radius:9px;padding:8px 12px;font-size:13px;line-height:1;white-space:nowrap}
+  .seg button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .sep{height:1px;background:var(--ui-line);margin:6px 2px}
+  .note{font-size:11.5px;line-height:1.45;color:var(--ink-soft);padding:4px 4px 6px}
+
+  /* highlights list */
+  #hlList{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+  .hl-item{display:flex;gap:10px;align-items:flex-start;padding:11px 6px;
+    border-radius:10px;cursor:pointer;text-align:left;border:none;background:none;
+    color:inherit;width:100%}
+  .hl-item:hover{background:rgba(127,127,127,.10)}
+  .hl-dot{width:12px;height:12px;border-radius:50%;flex:none;margin-top:4px}
+  .hl-text{flex:1;font-family:var(--serif);font-size:14px;line-height:1.4}
+  .hl-page{font-size:11px;color:var(--ink-soft);flex:none;margin-top:2px}
+  .hl-del{border:none;background:none;color:var(--ink-soft);padding:4px 6px;
+    font-size:15px;flex:none;border-radius:6px}
+  .hl-empty{color:var(--ink-soft);font-style:italic;font-size:14px;
+    font-family:var(--serif);text-align:center;padding:26px 10px}
+
+  /* scrubber */
+  .browse-top{display:flex;align-items:center;gap:12px;min-height:64px;margin-bottom:6px}
+  #thumbCanvas{border:1px solid var(--ui-line);border-radius:4px;background:#fff;flex:none;
+    box-shadow:0 3px 10px rgba(0,0,0,.2)}
   #browseLabel{font-size:13px;color:var(--ink-soft);flex:1;text-align:center}
-  #slider{width:100%;accent-color:var(--green);height:28px}
-  body[data-theme="sepia"] #browse{background:#EFE0C3;border-color:#C9B893;color:#4A3B25}
-  body[data-theme="night"] #browse{background:#1E2026;border-color:#33363F;color:#C9CAD1}
+  #slider{width:100%;accent-color:var(--accent);height:30px}
+  #backBtn[hidden]{display:none}
 
-  #stage{flex:1;overflow:auto;display:flex;padding:12px;
-    padding-bottom:calc(12px + env(safe-area-inset-bottom))}
-  #pageCanvas{box-shadow:0 4px 24px rgba(0,0,0,.28);height:auto;margin:auto;flex:none}
-  #loading{font-family:var(--sans);color:var(--ink-soft);padding:40px;margin:auto}
-  /* reflow / text mode */
-  #textView{width:min(40em,100%);margin:0 auto;padding:26px 28px 90px;line-height:1.62;
-    font-family:var(--serif)}
-  body[data-margin="narrow"] #textView{padding-left:10px;padding-right:10px;padding-top:12px}
-  body[data-margin="wide"] #textView{padding-left:48px;padding-right:48px;padding-top:36px}
-  body[data-margin="narrow"] #stage{padding-left:4px;padding-right:4px}
-  body[data-margin="wide"] #stage{padding-left:30px;padding-right:30px}
-  #textView p{margin:0 0 1em;text-align:justify;-webkit-hyphens:auto;hyphens:auto;overflow-wrap:break-word}
-  #textView .noText{font-family:var(--sans);font-style:italic;text-align:center;
-    margin-top:40px;opacity:.75}
-
-  /* reading themes */
-  body[data-theme="paper"] #reader{background:#DCD7C9}
-  body[data-theme="paper"] #textView{color:#2a2822}
-  body[data-theme="sepia"] #reader{background:#D9C7A7}
-  body[data-theme="sepia"] .toolbar{background:#EFE0C3;border-color:#C9B893;color:#4A3B25}
-  body[data-theme="sepia"] #menu{background:#EFE0C3;border-color:#C9B893;color:#4A3B25}
-  body[data-theme="sepia"] #pageCanvas{filter:sepia(.45) contrast(.96) brightness(.98)}
-  body[data-theme="sepia"] #textView{color:#4A3B25}
-  body[data-theme="night"] #reader{background:#14151A}
-  body[data-theme="night"] .toolbar{background:#1E2026;border-color:#33363F;color:#C9CAD1}
-  body[data-theme="night"] #menu{background:#1E2026;border-color:#33363F;color:#C9CAD1}
-  body[data-theme="night"] #pageCanvas{filter:invert(.93) hue-rotate(180deg) contrast(.92) brightness(.9)}
-  body[data-theme="night"] #textView{color:#C9CAD1}
+  /* toast + flash */
+  #toast{position:fixed;left:50%;transform:translateX(-50%);
+    bottom:calc(74px + env(safe-area-inset-bottom));z-index:80;pointer-events:none;
+    max-width:min(360px,calc(100vw - 32px));text-align:center;font-family:var(--sans);
+    font-size:12.5px;line-height:1.4;padding:11px 15px;border-radius:12px;
+    background:rgba(20,20,24,.92);color:#fff;opacity:0;transition:opacity .25s}
+  #toast.show{opacity:1}
+  @keyframes flash{0%{background:rgba(255,213,74,.9)}100%{background:transparent}}
+  .flash{animation:flash 1.1s ease}
 </style>
 </head>
-<body data-theme="paper">
+<body data-theme="paper" data-margin="medium">
 
 <!-- ================= LIBRARY ================= -->
 <div id="library">
@@ -164,9 +242,9 @@
     <span class="shelf-count" id="count"></span>
   </div>
   <div class="upload-row">
-    <button class="btn primary" onclick="document.getElementById('file').click()">Add PDFs</button>
+    <button class="btn primary" onclick="document.getElementById('file').click()">＋ Add PDFs</button>
     <input type="file" id="file" accept="application/pdf,.pdf" multiple hidden>
-    <span class="hint">Books are stored inside this browser — nothing is uploaded anywhere.</span>
+    <span class="hint">Books live inside this browser — nothing is uploaded anywhere.</span>
   </div>
   <div id="status"></div>
   <div class="shelf" id="shelf"></div>
@@ -177,62 +255,109 @@
   <div class="toolbar">
     <button class="barlink" onclick="closeReader()">‹ Shelf</button>
     <span class="title" id="bookTitle"></span>
-    <button class="menu-btn" id="menuBtn" onclick="toggleSettings()" aria-label="Menu">
+    <button class="icon-btn" id="hlBtn" onclick="toggleHls()" aria-label="Highlights" title="Highlights">▤</button>
+    <button class="icon-btn menu-btn" id="menuBtn" onclick="toggleSettings()" aria-label="Settings">
       <span></span><span></span><span></span>
     </button>
   </div>
 
-  <div id="backdrop" hidden onclick="closeSettings()"></div>
-  <div id="menu" hidden>
-    <div class="menu-row">
-      <button class="tbtn" onclick="turn(-1)">‹ Prev</button>
-      <span class="pagejump"><input id="pageBox" inputmode="numeric"><span id="pageTotal"></span></span>
-      <button class="tbtn" onclick="turn(1)">Next ›</button>
+  <div id="stage">
+    <div id="loading">Opening book…</div>
+    <div id="canvasScroll" hidden><canvas id="pageCanvas"></canvas></div>
+    <div id="paper" hidden>
+      <div id="sheet"><div id="colWrap"><div id="cols"></div></div></div>
     </div>
-    <div class="menu-sep"></div>
-    <div class="menu-row">
-      <label>Text size</label>
-      <div class="segbtns">
-        <button class="tbtn" onclick="zoom(-0.15)">A−</button>
-        <button class="tbtn" onclick="zoom(0.15)">A+</button>
-      </div>
+    <div id="selbar" hidden>
+      <button class="swatch" style="background:#ffd54a" onclick="applyHighlight('yellow')" aria-label="Yellow"></button>
+      <button class="swatch" style="background:#8bd98b" onclick="applyHighlight('green')" aria-label="Green"></button>
+      <button class="swatch" style="background:#ff92b8" onclick="applyHighlight('pink')" aria-label="Pink"></button>
+      <button class="swatch" style="background:#8db6ff" onclick="applyHighlight('blue')" aria-label="Blue"></button>
+      <button class="icon-btn" onclick="copySel()" aria-label="Copy">⧉</button>
     </div>
-    <div class="menu-row">
-      <label>Theme</label>
-      <div class="segbtns">
-        <button class="tbtn" id="th-paper" onclick="setTheme('paper')">Day</button>
-        <button class="tbtn" id="th-sepia" onclick="setTheme('sepia')">Sepia</button>
-        <button class="tbtn" id="th-night" onclick="setTheme('night')">Night</button>
-      </div>
-    </div>
-    <div class="menu-row">
-      <label>Margins</label>
-      <div class="segbtns">
-        <button class="tbtn" id="mg-narrow" onclick="setMargin('narrow')">Narrow</button>
-        <button class="tbtn" id="mg-medium" onclick="setMargin('medium')">Medium</button>
-        <button class="tbtn" id="mg-wide" onclick="setMargin('wide')">Wide</button>
-      </div>
-    </div>
-    <div class="menu-row">
-      <label>Layout</label>
-      <div class="segbtns">
-        <button class="tbtn" id="modeBtn" onclick="toggleMode()">Reflow</button>
-      </div>
-    </div>
-    <p class="menu-note" id="menuNote"></p>
   </div>
 
-  <div id="stage"><div id="loading">Opening book…</div><canvas id="pageCanvas" hidden></canvas><div id="textView" hidden></div></div>
-  <div id="browse" hidden>
-    <div class="browse-top">
-      <canvas id="thumbCanvas" width="84" height="118"></canvas>
-      <span id="browseLabel"></span>
-      <button class="tbtn" id="backBtn" hidden onclick="backJump()"></button>
-    </div>
-    <input type="range" id="slider" min="1" max="1" step="1" value="1">
+  <div id="footer">
+    <div id="progWrap" onclick="openBrowse()"><i id="progFill"></i></div>
+    <div id="progLabel"><span id="progLeft"></span><span id="progRight"></span></div>
   </div>
-  <div id="pagePill"></div>
+
+  <div id="pillHint"></div>
   <div id="toast"></div>
+</div>
+
+<!-- shared backdrop -->
+<div id="backdrop" hidden onclick="closeAllSheets()"></div>
+
+<!-- SETTINGS SHEET -->
+<div id="menu" class="sheet" hidden>
+  <div class="grab"></div>
+  <h3>Reading</h3>
+  <div class="row">
+    <label>Layout</label>
+    <div class="seg">
+      <button id="mode-text" onclick="setMode('text')">Reflow</button>
+      <button id="mode-page" onclick="setMode('page')">Page</button>
+    </div>
+  </div>
+  <div class="row">
+    <label>Text size</label>
+    <div class="seg">
+      <button onclick="zoom(-1)">A−</button>
+      <button onclick="zoom(1)">A＋</button>
+    </div>
+  </div>
+  <div class="row">
+    <label>Line spacing</label>
+    <div class="seg">
+      <button id="ls-tight"   onclick="setLine(1.45)">Tight</button>
+      <button id="ls-normal"  onclick="setLine(1.65)">Normal</button>
+      <button id="ls-relaxed" onclick="setLine(1.9)">Relaxed</button>
+    </div>
+  </div>
+  <div class="row">
+    <label>Typeface</label>
+    <div class="seg">
+      <button id="ff-serif" onclick="setFont('serif')">Serif</button>
+      <button id="ff-sans"  onclick="setFont('sans')">Sans</button>
+    </div>
+  </div>
+  <div class="row">
+    <label>Margins</label>
+    <div class="seg">
+      <button id="mg-narrow" onclick="setMargin('narrow')">Narrow</button>
+      <button id="mg-medium" onclick="setMargin('medium')">Medium</button>
+      <button id="mg-wide"   onclick="setMargin('wide')">Wide</button>
+    </div>
+  </div>
+  <div class="sep"></div>
+  <h3>Theme</h3>
+  <div class="row">
+    <label>Colour</label>
+    <div class="seg">
+      <button id="th-paper" onclick="setTheme('paper')">Day</button>
+      <button id="th-sepia" onclick="setTheme('sepia')">Sepia</button>
+      <button id="th-night" onclick="setTheme('night')">Night</button>
+    </div>
+  </div>
+  <p class="note" id="menuNote"></p>
+</div>
+
+<!-- HIGHLIGHTS SHEET -->
+<div id="hls" class="sheet" hidden>
+  <div class="grab"></div>
+  <h3>Highlights</h3>
+  <div id="hlList"></div>
+</div>
+
+<!-- BROWSE / SCRUBBER SHEET -->
+<div id="browse" class="sheet" hidden>
+  <div class="grab"></div>
+  <div class="browse-top">
+    <canvas id="thumbCanvas" width="84" height="118"></canvas>
+    <span id="browseLabel"></span>
+    <button class="seg" id="backBtn" hidden onclick="backJump()" style="border:1px solid var(--ui-line);border-radius:9px;padding:8px 12px;font-size:13px;background:transparent;color:inherit"></button>
+  </div>
+  <input type="range" id="slider" min="1" max="1" step="1" value="1">
 </div>
 
 <script>
@@ -241,30 +366,30 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 
 const $ = id => document.getElementById(id);
 const store = {
-  get:(k,d)=>{const v=localStorage.getItem("mk:"+k);return v===null?d:JSON.parse(v)},
-  set:(k,v)=>localStorage.setItem("mk:"+k,JSON.stringify(v))
+  get:(k,d)=>{try{const v=localStorage.getItem("mk:"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+  set:(k,v)=>{try{localStorage.setItem("mk:"+k,JSON.stringify(v))}catch(e){}}
 };
+function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
+function uid(){return "h"+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36)}
 
 /* ---------- IndexedDB: books live inside the browser ---------- */
 const idb = {
-  db: null,
-  open(){
-    return new Promise((res, rej) => {
-      if (this.db) return res(this.db);
-      const req = indexedDB.open("minikindle", 1);
-      req.onupgradeneeded = () => req.result.createObjectStore("books", {keyPath:"name"});
-      req.onsuccess = () => { this.db = req.result; res(this.db); };
-      req.onerror = () => rej(req.error);
-    });
-  },
-  tx(mode){ return this.db.transaction("books", mode).objectStore("books"); },
-  put(book){ return new Promise((res,rej)=>{ const r=this.tx("readwrite").put(book); r.onsuccess=res; r.onerror=()=>rej(r.error); }); },
-  all(){ return new Promise((res,rej)=>{ const r=this.tx("readonly").getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
-  get(name){ return new Promise((res,rej)=>{ const r=this.tx("readonly").get(name); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
-  del(name){ return new Promise((res,rej)=>{ const r=this.tx("readwrite").delete(name); r.onsuccess=res; r.onerror=()=>rej(r.error); }); }
+  db:null,
+  open(){return new Promise((res,rej)=>{
+    if(this.db) return res(this.db);
+    const req = indexedDB.open("minikindle",1);
+    req.onupgradeneeded = () => req.result.createObjectStore("books",{keyPath:"name"});
+    req.onsuccess = () => { this.db = req.result; res(this.db); };
+    req.onerror = () => rej(req.error);
+  });},
+  tx(m){return this.db.transaction("books",m).objectStore("books");},
+  put(b){return new Promise((res,rej)=>{const r=this.tx("readwrite").put(b);r.onsuccess=res;r.onerror=()=>rej(r.error);});},
+  all(){return new Promise((res,rej)=>{const r=this.tx("readonly").getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},
+  get(n){return new Promise((res,rej)=>{const r=this.tx("readonly").get(n);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},
+  del(n){return new Promise((res,rej)=>{const r=this.tx("readwrite").delete(n);r.onsuccess=res;r.onerror=()=>rej(r.error);});}
 };
 
-/* ---------- library ---------- */
+/* ---------- library shelf ---------- */
 async function loadShelf(){
   await idb.open();
   const books = (await idb.all()).sort((a,b)=>a.name.localeCompare(b.name));
@@ -276,22 +401,22 @@ async function loadShelf(){
     return;
   }
   for(const b of books){
-    const pos = store.get("pos:"+b.name, 0);
-    const total = store.get("total:"+b.name, 0);
+    const pos = store.get("pos:"+b.name,0);
+    const total = store.get("total:"+b.name,0);
     const pct = total ? Math.round(pos/total*100) : 0;
     const card = document.createElement("div");
     card.className = "book"+(pos>1?" started":"");
-    card.innerHTML = `
-      <span class="ribbon"></span>
-      <div class="title">${esc(b.name.replace(/\.pdf$/i,""))}</div>
-      <div class="meta">${pos>1 ? "Page "+pos+(total?" of "+total+" · "+pct+"%":"") : "Not started"}
-        · ${(b.size/1048576).toFixed(1)} MB</div>
-      <div class="bar"><i style="width:${pct}%"></i></div>
-      <button class="del">remove</button>`;
+    card.innerHTML =
+      '<span class="ribbon"></span>'+
+      '<div class="title">'+esc(b.name.replace(/\.pdf$/i,""))+'</div>'+
+      '<div class="meta">'+(pos>1 ? "Page "+pos+(total?" of "+total+" · "+pct+"%":"") : "Not started")+
+        ' · '+(b.size/1048576).toFixed(1)+' MB</div>'+
+      '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
+      '<button class="del">remove</button>';
     card.querySelector(".title").onclick = () => openBook(b.name);
     card.querySelector(".del").onclick = async e => {
       e.stopPropagation();
-      if(confirm('Remove "'+b.name+'" from the shelf?')){
+      if(confirm('Remove "'+b.name+'" from the shelf? (Your highlights for it stay saved.)')){
         await idb.del(b.name);
         loadShelf();
       }
@@ -299,7 +424,6 @@ async function loadShelf(){
     shelf.appendChild(card);
   }
 }
-function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
 
 $("file").onchange = async e => {
   await idb.open();
@@ -307,204 +431,306 @@ $("file").onchange = async e => {
   let done = 0;
   for(const f of files){
     $("status").textContent = "Saving “"+f.name+"”…";
-    const data = await f.arrayBuffer();
-    await idb.put({name:f.name, size:f.size, data});
-    done++;
+    try{
+      const data = await f.arrayBuffer();
+      await idb.put({name:f.name, size:f.size, data});
+      done++;
+    }catch(err){ $("status").textContent = "Couldn’t save “"+f.name+"” (too large?)."; }
   }
-  $("status").textContent = done ? done+" book"+(done>1?"s":"")+" added to the shelf." : "";
-  setTimeout(()=>$("status").textContent="", 3000);
+  if(done) $("status").textContent = done+" book"+(done>1?"s":"")+" added to the shelf.";
+  setTimeout(()=>$("status").textContent="",3000);
   e.target.value = "";
   loadShelf();
 };
 
-/* ---------- reader ---------- */
-let doc=null, current=1, target=1, zoomLevel=1, bookName="", rendering=false, pending=null;
-let viewMode = store.get("viewMode","page");     // "page" (exact) or "text" (reflow)
-let textSize = store.get("textSize", 19);         // font size for reflow mode
-let pageHasText = true;                            // does the current page have extractable text
-let bookHasText = true;                            // does the book contain real text at all
+/* ============================================================
+   READER STATE
+   ============================================================ */
+let doc=null, bookName="", numPages=0;
+let pdfPage=1;                 // current PDF page (1-based)
+let screenIdx=0, screensTotal=1;   // paginated screens within the current page (text mode)
+let pendingScreen=0;           // desired screen after next render (0 | 'last' | number)
+let viewMode = store.get("viewMode","text");   // "text" (reflow) | "page" (exact)
+let textSize = store.get("textSize",20);
+let lineSpace = store.get("lineSpace",1.65);
+let fontFamily = store.get("font","serif");
+let zoomLevel = 1;             // page mode zoom
+let bookHasText = true, pageHasText = true;
+let pageText = "";             // normalized text of the current page
+let rendering = false, renderToken = 0;
+const ocrCache = {};
 
+const COLGAP = 56;
+const HLCOLORS = {
+  yellow:"rgba(255,213,74,.5)", green:"rgba(120,214,120,.45)",
+  pink:"rgba(255,138,181,.45)", blue:"rgba(120,182,255,.48)"
+};
+const HLDOTS = { yellow:"#ffd54a", green:"#8bd98b", pink:"#ff92b8", blue:"#8db6ff" };
+
+/* ---------- open / close ---------- */
 async function openBook(name){
   bookName = name;
   document.body.classList.add("reading");
   $("reader").classList.add("open");
   $("bookTitle").textContent = name.replace(/\.pdf$/i,"");
-  $("loading").hidden = false; $("pageCanvas").hidden = true; $("textView").hidden = true;
-  updateModeBtn();
-  const rec = await idb.get(name);
-  if(!rec){ alert("Book not found."); return closeReader(); }
-  doc = await pdfjsLib.getDocument({data: rec.data.slice(0)}).promise;
-  store.set("total:"+name, doc.numPages);
-  $("pageTotal").textContent = "/ "+doc.numPages;
-  zoomLevel = store.get("zoom:"+name, 1);
-  current = Math.min(store.get("pos:"+name, 1) || 1, doc.numPages);
-  target = current;
-  // does this book contain real (selectable) text? check a couple of pages
-  bookHasText = await detectBookText();
-  render(current);
+  $("loading").hidden = false; $("loading").textContent = "Opening book…";
+  $("canvasScroll").hidden = true; $("paper").hidden = true;
+  try{
+    const rec = await idb.get(name);
+    if(!rec){ alert("Book not found."); return closeReader(); }
+    doc = await pdfjsLib.getDocument({data: rec.data.slice(0)}).promise;
+    numPages = doc.numPages;
+    store.set("total:"+name, numPages);
+    zoomLevel = store.get("zoom:"+name,1);
+    pdfPage = Math.min(store.get("pos:"+name,1)||1, numPages);
+    pendingScreen = store.get("screen:"+name,0)||0;
+    bookHasText = await detectBookText();
+    if(!bookHasText && viewMode==="text"){ /* keep text mode: page will offer OCR */ }
+    syncControls();
+    await render();
+  }catch(err){
+    $("loading").textContent = "Couldn’t open this PDF.";
+  }
+}
+function closeReader(){
+  document.body.classList.remove("reading");
+  $("reader").classList.remove("open");
+  closeAllSheets();
+  hideSelbar();
+  doc = null;
+  loadShelf();
 }
 
-// sample a few pages to decide if the PDF is text-based or scanned images
 async function detectBookText(){
-  const probes = [current, 1, Math.ceil(doc.numPages/2), doc.numPages]
-    .filter((v,i,a)=>a.indexOf(v)===i && v>=1 && v<=doc.numPages);
+  const probes = [pdfPage,1,Math.ceil(numPages/2),numPages]
+    .filter((v,i,a)=>a.indexOf(v)===i && v>=1 && v<=numPages);
   for(const pn of probes){
     try{
       const t = await extractText(await doc.getPage(pn));
-      if(t && t.replace(/\s/g,"").length > 20) return true;
+      if(t && t.replace(/\s/g,"").length>20) return true;
     }catch(e){}
   }
   return false;
 }
 
-async function render(n){
+/* ============================================================
+   RENDER
+   ============================================================ */
+async function render(){
   if(!doc) return;
-  if(rendering){ pending = n; return; }
+  const my = ++renderToken;
   rendering = true;
-  current = Math.max(1, Math.min(n, doc.numPages));
-  target = current;
-  const page = await doc.getPage(current);
-  if(viewMode === "text") await renderText(page);
-  else await renderPage(page);
-  $("pageBox").value = current;
-  store.set("pos:"+bookName, current);          // remember where I am
-  $("stage").scrollTop = 0;
-  $("stage").scrollLeft = 0;
-  showPill();
-  updateNote();
-  if(!$("browse").hidden){                        // keep scrubber in sync
-    $("slider").value = current;
-    updateBrowseLabel(current);
+  pdfPage = Math.max(1, Math.min(pdfPage, numPages));
+  try{
+    const page = await doc.getPage(pdfPage);
+    if(my!==renderToken) return;
+    if(viewMode==="text") await renderText(page, my);
+    else await renderCanvas(page, my);
+    if(my!==renderToken) return;
+    store.set("pos:"+bookName, pdfPage);
+    updateProgress();
+    syncBrowse();
+  }catch(err){
+    $("loading").hidden = false;
+    $("loading").textContent = "Couldn’t render this page.";
   }
   rendering = false;
-  if(pending!==null){const p=pending;pending=null;render(p);}
+}
+function gotoPage(n, screen){
+  pdfPage = Math.max(1, Math.min(n, numPages));
+  pendingScreen = (screen===undefined?0:screen);
+  return render();
 }
 
-let pillTimer=null;
-function showPill(){
-  if(!doc) return;
-  const pill = $("pagePill");
-  pill.textContent = current + " / " + doc.numPages;
-  pill.classList.add("show");
-  clearTimeout(pillTimer);
-  pillTimer = setTimeout(()=>pill.classList.remove("show"), 1600);
-}
-
-async function renderPage(page){
-  $("textView").hidden = true;
-  const stageW = $("stage").clientWidth - 24;
+/* ---- exact PDF page on a canvas ---- */
+async function renderCanvas(page, my){
+  $("paper").hidden = true;
+  const scroll = $("canvasScroll");
+  scroll.hidden = false;
+  const stageW = scroll.clientWidth - 32;
   const base = page.getViewport({scale:1});
-  const scale = (stageW / base.width) * zoomLevel;
-  const displayW = base.width * scale;               // size shown on screen
-  let dpr = Math.min(window.devicePixelRatio || 1, 2);
-  let vp = page.getViewport({scale: scale * dpr});
-  // iPhones refuse canvases above ~16.7M pixels — shrink internal resolution if needed
+  const scale = (stageW/base.width) * zoomLevel;
+  const displayW = base.width * scale;
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  let vp = page.getViewport({scale: scale*dpr});
   const MAXPIX = 15000000, MAXSIDE = 4096;
-  if (vp.width * vp.height > MAXPIX || vp.width > MAXSIDE || vp.height > MAXSIDE){
+  if(vp.width*vp.height>MAXPIX || vp.width>MAXSIDE || vp.height>MAXSIDE){
     const f = Math.min(Math.sqrt(MAXPIX/(vp.width*vp.height)), MAXSIDE/vp.width, MAXSIDE/vp.height);
-    vp = page.getViewport({scale: scale * dpr * f});
+    vp = page.getViewport({scale: scale*dpr*f});
   }
   const canvas = $("pageCanvas");
   canvas.width = vp.width; canvas.height = vp.height;
-  canvas.style.width = displayW + "px";
+  canvas.style.width = displayW+"px";
   await page.render({canvasContext:canvas.getContext("2d"), viewport:vp}).promise;
-  $("loading").hidden = true; canvas.hidden = false;
+  if(my!==renderToken) return;
+  $("loading").hidden = true;
+  scroll.scrollTop = 0; scroll.scrollLeft = 0;
 }
 
-async function renderText(page){
-  const txt = await extractText(page);
-  const tv = $("textView");
-  $("pageCanvas").hidden = true;
-  $("loading").hidden = true;
-  tv.hidden = false;
-  tv.style.fontSize = textSize + "px";
-  if(!txt || txt.replace(/\s/g,"").length < 3){
+/* ---- reflowable, paginated text ---- */
+async function renderText(page, my){
+  $("canvasScroll").hidden = true;
+  let txt = ocrCache[bookName+":"+pdfPage] || await extractText(page);
+  if(my!==renderToken) return;
+  const cols = $("cols");
+  applyTypography();
+  $("paper").hidden = false;
+
+  if(!txt || txt.replace(/\s/g,"").length<3){
     pageHasText = false;
+    pageText = "";
     if(bookHasText){
-      // book is text-based; this page is just artwork (cover, illustration)
-      tv.innerHTML = '<p class="noText">This page is an image (cover or artwork) — turn the page, the rest of the book has resizable text. Or switch Layout to “Page” to see it.</p>';
+      cols.innerHTML = '<div class="noText">This page is an image (a cover or an illustration).<br>Turn the page — the rest of the book is resizable text.</div>';
     } else {
-      const cached = ocrCache[bookName+":"+current];
-      if(cached){ tv.innerHTML = cached; pageHasText = true; return; }
-      tv.innerHTML = '<p class="noText">This is a scanned page (a picture of text). I can try to read it with OCR and turn it into resizable text.</p>'
-        + '<p style="text-align:center"><button class="tbtn" onclick="runOcr()">🔍 Recognize text (OCR)</button></p>'
-        + '<p class="noText" style="font-size:.85em">Needs internet · works best on clear English scans · or switch Layout to “Page” and zoom.</p>';
+      cols.innerHTML = '<div class="noText">This looks like a scanned page (a picture of text).'+
+        '<br>I can read it with OCR and turn it into resizable text.'+
+        '<br><button class="btn" onclick="runOcr()">🔍 Recognise text (OCR)</button>'+
+        '<br><span style="font-size:.82em">Needs internet · best on clear English scans, '+
+        'or switch Layout → Page to zoom the picture.</span></div>';
     }
+    layoutColumns();
+    $("loading").hidden = true;
     return;
   }
   pageHasText = true;
-  tv.innerHTML = txt.split(/\n\n+/).map(p => "<p>"+esc(p)+"</p>").join("");
+  pageText = txt;
+  buildCols(pageText, hlsForPage(pdfPage));
+  layoutColumns();
+  $("loading").hidden = true;
 }
 
-/* ---------- OCR for scanned pages (lazy-loaded, cached per page) ---------- */
-const ocrCache = {};
-function loadScript(src){
-  return new Promise((res, rej) => {
-    const s = document.createElement("script");
-    s.src = src; s.onload = res; s.onerror = () => rej(new Error("load failed"));
-    document.head.appendChild(s);
-  });
+/* split page text into paragraphs, remembering each paragraph's
+   start offset in the original string (so highlights map cleanly) */
+function splitParas(text){
+  const parts=[]; const re=/\n\n+/g; let last=0,m;
+  while((m=re.exec(text))!==null){ parts.push({text:text.slice(last,m.index),start:last}); last=m.index+m[0].length; }
+  parts.push({text:text.slice(last),start:last});
+  return parts;
 }
-async function runOcr(){
+/* build the column HTML, wrapping saved highlight ranges in <mark> */
+function buildCols(text, hls){
+  const sorted = hls.slice().sort((a,b)=>a.s-b.s);
+  const paras = splitParas(text);
+  let html = "";
+  for(const p of paras){
+    if(!p.text.trim()) continue;
+    const pend = p.start + p.text.length;
+    let inner = "", cursor = p.start;
+    for(const h of sorted){
+      if(h.e<=p.start || h.s>=pend) continue;
+      const s = Math.max(h.s, p.start, cursor), e = Math.min(h.e, pend);
+      if(e<=cursor) continue;
+      if(s>cursor) inner += esc(text.slice(cursor,s));
+      inner += '<mark class="hl" data-hl="'+h.id+'" style="background:'+(HLCOLORS[h.color]||HLCOLORS.yellow)+
+               '" onclick="tapHighlight(\''+h.id+'\')">'+esc(text.slice(s,e))+'</mark>';
+      cursor = e;
+    }
+    if(cursor<pend) inner += esc(text.slice(cursor,pend));
+    html += '<p data-start="'+p.start+'">'+inner+'</p>';
+  }
+  $("cols").innerHTML = html;
+}
+
+function applyTypography(){
+  const cols = $("cols");
+  cols.style.fontSize = textSize+"px";
+  cols.style.lineHeight = lineSpace;
+  cols.style.fontFamily = fontFamily==="sans" ? "var(--sans)" : "var(--serif)";
+}
+
+/* ---- column pagination maths ---- */
+function layoutColumns(keepFrac){
+  const wrap = $("colWrap"), cols = $("cols"), sheet = $("sheet");
+  // padding scales a little with margin choice
+  const mg = document.body.dataset.margin;
+  const padX = mg==="narrow"?22 : mg==="wide"?60 : 40;
+  const padY = 30;
+  const W = Math.max(50, sheet.clientWidth - padX*2);
+  const H = Math.max(50, sheet.clientHeight - padY*2);
+  wrap.style.left = padX+"px"; wrap.style.top = padY+"px";
+  wrap.style.width = W+"px";   wrap.style.height = H+"px";
+  cols.style.transition = "none";
+  cols.style.height = H+"px";
+  cols.style.width = W+"px";
+  cols.style.columnWidth = W+"px";
+  cols.style.columnGap = COLGAP+"px";
+  // force reflow, then measure total width of all columns
+  void cols.offsetWidth;
+  const step = W + COLGAP;
+  screensTotal = Math.max(1, Math.round((cols.scrollWidth + COLGAP)/step));
+  if(keepFrac!=null) screenIdx = Math.round(keepFrac*(screensTotal-1));
+  else if(pendingScreen==="last") screenIdx = screensTotal-1;
+  else screenIdx = pendingScreen||0;
+  pendingScreen = 0;
+  screenIdx = Math.max(0, Math.min(screenIdx, screensTotal-1));
+  applyTransform(false);
+  requestAnimationFrame(()=>{ cols.style.transition=""; });
+  updateProgress();
+}
+function applyTransform(animate){
+  const W = $("colWrap").clientWidth, step = W + COLGAP, cols = $("cols");
+  if(!animate){ cols.style.transition="none"; }
+  cols.style.transform = "translateX("+(-(screenIdx*step))+"px)";
+  if(!animate) requestAnimationFrame(()=>{ cols.style.transition=""; });
+}
+function goScreen(i){
+  screenIdx = Math.max(0, Math.min(i, screensTotal-1));
+  applyTransform(true);
+  store.set("screen:"+bookName, screenIdx);
+  updateProgress();
+}
+
+/* ---- turn: screens first, then PDF pages ---- */
+function turn(dir){
   if(!doc) return;
-  const tv = $("textView"), pageAtStart = current;
-  try{
-    tv.innerHTML = '<p class="noText">Reading the page… this can take ~10–30 seconds.</p><p class="noText" id="ocrProg"></p>';
-    // draw the page big and sharp for better recognition
-    const page = await doc.getPage(pageAtStart);
-    const vp = page.getViewport({scale: 2});
-    const c = document.createElement("canvas");
-    c.width = vp.width; c.height = vp.height;
-    await page.render({canvasContext: c.getContext("2d"), viewport: vp}).promise;
-    if(!window.Tesseract){
-      const prog = $("ocrProg"); if(prog) prog.textContent = "Loading the reader engine…";
-      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js");
+  hideSelbar();
+  if(viewMode==="text"){
+    if(dir>0){
+      if(screenIdx < screensTotal-1) goScreen(screenIdx+1);
+      else if(pdfPage < numPages) gotoPage(pdfPage+1, 0);
+      else toast("You’re at the end of the book.");
+    } else {
+      if(screenIdx>0) goScreen(screenIdx-1);
+      else if(pdfPage>1) gotoPage(pdfPage-1, "last");
+      else toast("You’re at the beginning.");
     }
-    const result = await Tesseract.recognize(c, "eng", {logger: m => {
-      const prog = $("ocrProg");
-      if(prog && m.status === "recognizing text")
-        prog.textContent = "Recognizing… " + Math.round((m.progress||0)*100) + "%";
-    }});
-    if(current !== pageAtStart) return;              // user moved on meanwhile
-    const text = (result && result.data && result.data.text || "").trim();
-    if(!text || text.replace(/\s/g,"").length < 3){
-      tv.innerHTML = '<p class="noText">Couldn’t find readable text on this page. Switch Layout to “Page” and zoom instead.</p>';
-      return;
-    }
-    const htmlOut = text.split(/\n\s*\n+/).map(p => "<p>"+esc(p.replace(/\n/g," "))+"</p>").join("");
-    ocrCache[bookName+":"+pageAtStart] = htmlOut;    // remember for this session
-    pageHasText = true;
-    tv.innerHTML = htmlOut;
-    tv.style.fontSize = textSize + "px";
-    toast("Text recognized — A− / A+ now resizes it. OCR isn’t perfect; forgive small mistakes.");
-  }catch(err){
-    tv.innerHTML = '<p class="noText">OCR couldn’t run (check your internet connection). Switch Layout to “Page” and zoom instead.</p>';
+  } else {
+    gotoPage(pdfPage+dir, 0);
   }
 }
 
-// pull readable, reflowable text out of a PDF page
+/* ---- progress ---- */
+function updateProgress(){
+  if(!doc) return;
+  const pct = numPages ? Math.round(pdfPage/numPages*100) : 0;
+  $("progFill").style.width = pct+"%";
+  $("progLeft").textContent = "Page "+pdfPage+" of "+numPages;
+  $("progRight").textContent =
+    (viewMode==="text" && screensTotal>1) ? (screenIdx+1)+" / "+screensTotal+" · "+pct+"%" : pct+"%";
+}
+
+/* ============================================================
+   TEXT EXTRACTION  (reflow) + OCR (scanned pages)
+   ============================================================ */
 async function extractText(page){
   const tc = await page.getTextContent();
-  const items = tc.items.filter(i => typeof i.str === "string");
+  const items = tc.items.filter(i=>typeof i.str==="string");
   if(!items.length) return "";
-  const heights = items.map(i => Math.abs(i.transform[3]) || i.height || 0)
-                       .filter(h => h > 0).sort((a,b)=>a-b);
+  const heights = items.map(i=>Math.abs(i.transform[3])||i.height||0)
+                       .filter(h=>h>0).sort((a,b)=>a-b);
   const lineH = heights.length ? heights[Math.floor(heights.length/2)] : 12;
-  let out = "", prevY = null, prevXEnd = null;
+  let out="", prevY=null, prevXEnd=null;
   for(const it of items){
-    const x = it.transform[4], y = it.transform[5], w = it.width || 0;
-    if(prevY !== null){
+    const x=it.transform[4], y=it.transform[5], w=it.width||0;
+    if(prevY!==null){
       const gap = prevY - y;
-      if(Math.abs(gap) > lineH * 1.8){                 // big jump = new paragraph
-        out = out.replace(/ +$/,"") + "\n\n";
-        prevXEnd = null;
-      } else if(Math.abs(gap) > lineH * 0.4){          // next visual line
-        if(out.endsWith("-")) out = out.slice(0,-1);   // join hyphenated word
+      if(Math.abs(gap) > lineH*1.8){ out = out.replace(/ +$/,"")+"\n\n"; prevXEnd=null; }
+      else if(Math.abs(gap) > lineH*0.4){
+        if(out.endsWith("-")) out = out.slice(0,-1);
         else if(!/\s$/.test(out)) out += " ";
-        prevXEnd = null;
-      } else if(prevXEnd !== null && x - prevXEnd > lineH*0.25
-                && !/\s$/.test(out) && it.str && !/^\s/.test(it.str)){
-        out += " ";                                    // gap on same line
+        prevXEnd=null;
+      } else if(prevXEnd!==null && x-prevXEnd > lineH*0.25 && !/\s$/.test(out) && it.str && !/^\s/.test(it.str)){
+        out += " ";
       }
     }
     out += it.str;
@@ -513,212 +739,349 @@ async function extractText(page){
   return out.replace(/\n{3,}/g,"\n\n").trim();
 }
 
-function turn(d){
+function loadScript(src){return new Promise((res,rej)=>{
+  const s=document.createElement("script"); s.src=src; s.onload=res;
+  s.onerror=()=>rej(new Error("load failed")); document.head.appendChild(s);
+});}
+async function runOcr(){
   if(!doc) return;
-  target = Math.max(1, Math.min(target + d, doc.numPages));
-  render(target);
-}
-function zoom(d){
-  if(viewMode === "text"){
-    textSize = Math.max(13, Math.min(46, textSize + (d > 0 ? 2 : -2)));
-    store.set("textSize", textSize);
-    $("textView").style.fontSize = textSize + "px";   // instant reflow, no re-render
-    updateNote();
-    return;
+  const cols = $("cols"), pageAtStart = pdfPage;
+  try{
+    cols.innerHTML = '<div class="noText">Reading the page… ~10–30 seconds.<br><span id="ocrProg"></span></div>';
+    layoutColumns();
+    const page = await doc.getPage(pageAtStart);
+    const vp = page.getViewport({scale:2});
+    const c = document.createElement("canvas");
+    c.width = vp.width; c.height = vp.height;
+    await page.render({canvasContext:c.getContext("2d"), viewport:vp}).promise;
+    if(!window.Tesseract){
+      const p=$("ocrProg"); if(p) p.textContent="Loading the reader engine…";
+      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js");
+    }
+    const result = await Tesseract.recognize(c,"eng",{logger:m=>{
+      const p=$("ocrProg");
+      if(p && m.status==="recognizing text") p.textContent="Recognising… "+Math.round((m.progress||0)*100)+"%";
+    }});
+    if(pdfPage!==pageAtStart) return;
+    const text = (result&&result.data&&result.data.text||"").trim();
+    if(!text || text.replace(/\s/g,"").length<3){
+      cols.innerHTML = '<div class="noText">Couldn’t find readable text here. Try Layout → Page and zoom.</div>';
+      layoutColumns(); return;
+    }
+    const clean = text.split(/\n\s*\n+/).map(p=>p.replace(/\n/g," ").trim()).filter(Boolean).join("\n\n");
+    ocrCache[bookName+":"+pageAtStart] = clean;
+    pageHasText = true; pageText = clean;
+    buildCols(pageText, hlsForPage(pdfPage));
+    layoutColumns();
+    toast("Text recognised — A− / A＋ now resizes it. OCR isn’t perfect; forgive small errors.");
+  }catch(err){
+    cols.innerHTML = '<div class="noText">OCR couldn’t run (check your internet). Try Layout → Page and zoom.</div>';
+    layoutColumns();
   }
-  // in Page layout: if the book has real text, A± should resize text like Kindle,
-  // so switch into Reflow automatically. Otherwise (scanned images) zoom the page.
-  if(bookHasText){
-    viewMode = "text";
-    store.set("viewMode", viewMode);
-    updateModeBtn();
-    textSize = Math.max(13, Math.min(46, textSize + (d > 0 ? 2 : -2)));
-    store.set("textSize", textSize);
-    toast("Text mode — A− / A+ now resizes text. Tap ☰ › Layout › Page for the exact page.");
-    render(current);
-    return;
-  }
-  zoomLevel = Math.max(0.5, Math.min(3, zoomLevel+d));
-  store.set("zoom:"+bookName, zoomLevel);
-  toast("Scanned book — zooming the image. Tip: ☰ › Layout › Reflow offers OCR to make real text.");
-  render(current);
 }
 
-let toastTimer=null;
-function toast(msg){
-  let el = $("toast");
-  el.textContent = msg;
-  el.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>el.classList.remove("show"), 3200);
+/* ============================================================
+   HIGHLIGHTS
+   ============================================================ */
+function allHls(){ return store.get("hl:"+bookName, []); }
+function saveHls(list){ store.set("hl:"+bookName, list); }
+function hlsForPage(p){ return allHls().filter(h=>h.page===p); }
+
+let pendingSel = null;   // {s,e} char range awaiting a colour choice
+
+function paraOf(node){
+  let el = node.nodeType===3 ? node.parentElement : node;
+  return el ? el.closest("[data-start]") : null;
 }
-function openSettings(){
-  $("menu").hidden = false;
-  $("backdrop").hidden = false;
-  $("menuBtn").classList.add("on");
-  updateNote();
+function offsetWithin(paraEl, node, off){
+  const r = document.createRange();
+  r.setStart(paraEl, 0); r.setEnd(node, off);
+  return r.toString().length;   // marks add no text, so this matches the source slice
 }
-function closeSettings(){
-  $("menu").hidden = true;
-  $("backdrop").hidden = true;
-  $("menuBtn").classList.remove("on");
+function readSelection(){
+  const sel = window.getSelection();
+  if(!sel || !sel.rangeCount || sel.isCollapsed) return null;
+  const r = sel.getRangeAt(0);
+  const pa = paraOf(r.startContainer), pb = paraOf(r.endContainer);
+  if(!pa || !pb) return null;
+  const a = (+pa.dataset.start) + offsetWithin(pa, r.startContainer, r.startOffset);
+  const b = (+pb.dataset.start) + offsetWithin(pb, r.endContainer, r.endOffset);
+  const s = Math.min(a,b), e = Math.max(a,b);
+  if(e - s < 1) return null;
+  return {s, e, rect: r.getBoundingClientRect()};
+}
+function maybeShowSelbar(){
+  if(viewMode!=="text" || !pageHasText){ hideSelbar(); return; }
+  const info = readSelection();
+  if(!info){ hideSelbar(); return; }
+  pendingSel = {s:info.s, e:info.e};
+  const bar = $("selbar");
+  bar.hidden = false;
+  const bw = bar.offsetWidth, bh = bar.offsetHeight;
+  let x = info.rect.left + info.rect.width/2;
+  let y = info.rect.top - 10;
+  x = Math.max(bw/2+8, Math.min(x, window.innerWidth - bw/2 - 8));
+  if(y - bh < 8) y = info.rect.bottom + bh + 10;   // flip below if no room above
+  bar.style.left = x+"px";
+  bar.style.top = y+"px";
+}
+function hideSelbar(){ $("selbar").hidden = true; pendingSel = null; }
+function applyHighlight(color){
+  if(!pendingSel) return;
+  const list = allHls();
+  const text = pageText.slice(pendingSel.s, pendingSel.e);
+  list.push({id:uid(), page:pdfPage, s:pendingSel.s, e:pendingSel.e, text, color});
+  saveHls(list);
+  const keep = screenIdx;
+  buildCols(pageText, hlsForPage(pdfPage));
+  layoutColumns();
+  screenIdx = Math.min(keep, screensTotal-1); applyTransform(false);
+  const s = window.getSelection(); if(s) s.removeAllRanges();
+  hideSelbar();
+  toast("Highlighted.");
+}
+function copySel(){
+  if(!pendingSel) return;
+  const text = pageText.slice(pendingSel.s, pendingSel.e);
+  if(navigator.clipboard) navigator.clipboard.writeText(text).then(()=>toast("Copied."),()=>{});
+  const s = window.getSelection(); if(s) s.removeAllRanges();
+  hideSelbar();
+}
+function tapHighlight(id){
+  if(confirm("Remove this highlight?")){
+    saveHls(allHls().filter(h=>h.id!==id));
+    const keep = screenIdx;
+    buildCols(pageText, hlsForPage(pdfPage));
+    layoutColumns();
+    screenIdx = Math.min(keep, screensTotal-1); applyTransform(false);
+    renderHlList();
+  }
+}
+
+/* highlights panel */
+function toggleHls(){ if($("hls").hidden){ closeAllSheets(); openHls(); } else closeSheet("hls"); }
+function openHls(){ renderHlList(); openSheet("hls"); }
+function renderHlList(){
+  const list = allHls().slice().sort((a,b)=> a.page-b.page || a.s-b.s);
+  const box = $("hlList");
+  if(!list.length){ box.innerHTML = '<div class="hl-empty">No highlights yet. In Reflow layout, select text to highlight it.</div>'; return; }
+  box.innerHTML = "";
+  for(const h of list){
+    const row = document.createElement("button");
+    row.className = "hl-item";
+    const snip = h.text.length>140 ? h.text.slice(0,140)+"…" : h.text;
+    row.innerHTML =
+      '<span class="hl-dot" style="background:'+(HLDOTS[h.color]||HLDOTS.yellow)+'"></span>'+
+      '<span class="hl-text">'+esc(snip)+'</span>'+
+      '<span class="hl-page">p.'+h.page+'</span>'+
+      '<span class="hl-del" title="Remove">✕</span>';
+    row.querySelector(".hl-del").onclick = e => { e.stopPropagation(); tapHighlight(h.id); };
+    row.onclick = () => jumpToHighlight(h);
+    box.appendChild(row);
+  }
+}
+async function jumpToHighlight(h){
+  closeAllSheets();
+  if(viewMode!=="text"){ setMode("text"); }
+  await gotoPage(h.page, 0);
+  const mark = $("cols").querySelector('[data-hl="'+h.id+'"]');
+  if(mark){
+    const W = $("colWrap").clientWidth, step = W + COLGAP;
+    goScreen(Math.round(mark.offsetLeft/step));
+    mark.classList.add("flash");
+    setTimeout(()=>mark.classList.remove("flash"),1100);
+  }
+}
+
+/* ============================================================
+   SETTINGS / THEME / MENU
+   ============================================================ */
+function zoom(dir){
+  if(viewMode==="text"){
+    textSize = Math.max(14, Math.min(40, textSize + (dir>0?2:-2)));
+    store.set("textSize", textSize);
+    const frac = screensTotal>1 ? screenIdx/(screensTotal-1) : 0;
+    applyTypography();
+    layoutColumns(frac);           // repaginate, keep roughly the same spot
+  } else if(bookHasText){
+    // switch to reflow so A± resizes text, Kindle-style
+    setMode("text");
+    textSize = Math.max(14, Math.min(40, textSize + (dir>0?2:-2)));
+    store.set("textSize", textSize);
+    toast("Reflow layout — A− / A＋ now resizes the text.");
+  } else {
+    zoomLevel = Math.max(0.5, Math.min(3, zoomLevel + (dir>0?0.15:-0.15)));
+    store.set("zoom:"+bookName, zoomLevel);
+    render();
+  }
+}
+function setMode(m){
+  if(viewMode===m){ syncControls(); return; }
+  const frac = (viewMode==="text" && screensTotal>1) ? screenIdx/(screensTotal-1) : 0;
+  viewMode = m; store.set("viewMode", m);
+  pendingScreen = m==="text" ? Math.round(frac*999999) : 0; // approx; clamped in layout
+  if(m==="text") pendingScreen = 0;   // simplest: land at page top
+  syncControls();
+  render();
+}
+function setLine(v){ lineSpace=v; store.set("lineSpace",v); syncControls();
+  if(viewMode==="text" && pageHasText){ const f=screensTotal>1?screenIdx/(screensTotal-1):0; applyTypography(); layoutColumns(f);} }
+function setFont(f){ fontFamily=f; store.set("font",f); syncControls();
+  if(viewMode==="text" && pageHasText){ const fr=screensTotal>1?screenIdx/(screensTotal-1):0; applyTypography(); layoutColumns(fr);} }
+function setMargin(m){ document.body.dataset.margin=m; store.set("margin",m); syncControls();
+  if(viewMode==="text"){ if(pageHasText){const f=screensTotal>1?screenIdx/(screensTotal-1):0; layoutColumns(f);} else layoutColumns(); }
+  else if(doc) render(); }
+function setTheme(t){ document.body.dataset.theme=t; store.set("theme",t); syncControls();
+  document.querySelector('meta[name=theme-color]').setAttribute("content", getComputedStyle(document.body).getPropertyValue("--ui").trim()||"#1F4A38"); }
+
+function syncControls(){
+  const set=(id,on)=>{const el=$(id); if(el) el.classList.toggle("active",on);};
+  set("mode-text", viewMode==="text"); set("mode-page", viewMode==="page");
+  set("ls-tight", lineSpace<1.55); set("ls-normal", lineSpace>=1.55&&lineSpace<1.8); set("ls-relaxed", lineSpace>=1.8);
+  set("ff-serif", fontFamily==="serif"); set("ff-sans", fontFamily==="sans");
+  const mg=document.body.dataset.margin;
+  set("mg-narrow",mg==="narrow"); set("mg-medium",mg==="medium"); set("mg-wide",mg==="wide");
+  const th=document.body.dataset.theme;
+  set("th-paper",th==="paper"); set("th-sepia",th==="sepia"); set("th-night",th==="night");
+  const note=$("menuNote");
+  if(note) note.textContent = viewMode==="text"
+    ? "Reflow splits the book into clean pages — text never runs off the screen, and A− / A＋ re-paginates it."
+    : "Page shows the exact PDF. A− / A＋ zooms the picture. Reflow gives resizable, highlightable text.";
+}
+
+/* ---- sheets ---- */
+function openSheet(id){ $(id).hidden=false; $("backdrop").hidden=false; }
+function closeSheet(id){ $(id).hidden=true; if(allSheetsClosed()) $("backdrop").hidden=true; }
+function allSheetsClosed(){ return $("menu").hidden && $("hls").hidden && $("browse").hidden; }
+function closeAllSheets(){
+  $("menu").hidden=true; $("hls").hidden=true; $("browse").hidden=true;
+  $("backdrop").hidden=true; $("menuBtn").classList.remove("on"); $("hlBtn").classList.remove("on");
 }
 function toggleSettings(){
-  if($("menu").hidden) openSettings(); else closeSettings();
-}
-function updateNote(){
-  const note = $("menuNote");
-  if(!note) return;
-  if(viewMode === "text"){
-    note.textContent = pageHasText
-      ? "A− / A+ resizes the text and rewraps it to fit, like Kindle."
-      : "This page is an image. Use the OCR button to turn it into text, or switch to Page layout and zoom.";
-  } else {
-    note.textContent = "Page layout shows the exact PDF. A− / A+ zooms in and out. Try Reflow for resizable text.";
-  }
-}
-function updateModeBtn(){
-  const b = $("modeBtn");
-  if(!b) return;
-  b.textContent = viewMode === "text" ? "Page" : "Reflow";
-  b.title = viewMode === "text"
-    ? "Switch to the exact original page"
-    : "Switch to resizable, reflowing text (Kindle-style)";
-}
-function toggleMode(){
-  viewMode = viewMode === "text" ? "page" : "text";
-  store.set("viewMode", viewMode);
-  updateModeBtn();
-  render(current);
-}
-$("pageBox").addEventListener("change", e=>{
-  const n = parseInt(e.target.value,10);
-  if(!isNaN(n)) render(n);
-});
-function closeReader(){
-  document.body.classList.remove("reading");
-  $("reader").classList.remove("open");
-  closeSettings();
-  closeBrowse();
-  doc = null;
-  loadShelf();
+  if($("menu").hidden){ closeAllSheets(); syncControls(); openSheet("menu"); $("menuBtn").classList.add("on"); }
+  else closeAllSheets();
 }
 
-/* themes */
-function setTheme(t){
-  document.body.dataset.theme = t;
-  store.set("theme", t);
-  for(const x of ["paper","sepia","night"])
-    $("th-"+x).classList.toggle("active", x===t);
-}
-setTheme(store.get("theme","paper"));
-
-/* margins (Kindle-style breathing room) */
-function setMargin(m){
-  document.body.dataset.margin = m;
-  store.set("margin", m);
-  for(const x of ["narrow","medium","wide"])
-    $("mg-"+x).classList.toggle("active", x===m);
-  if(doc) render(current);          // page width changes, so redraw
-}
-setMargin(store.get("margin","medium"));
-
-/* ---------- center-tap browse (scrubber with preview) ---------- */
-let browseFrom = null, thumbTask = null, thumbTimer = null;
-function toggleBrowse(){
-  if(!doc) return;
-  if($("browse").hidden) openBrowse(); else closeBrowse();
-}
+/* ============================================================
+   BROWSE / SCRUBBER
+   ============================================================ */
+let browseFrom=null, thumbTask=null, thumbTimer=null;
 function openBrowse(){
-  browseFrom = current;
-  const s = $("slider");
-  s.min = 1; s.max = doc.numPages; s.value = current;
+  if(!doc) return;
+  closeAllSheets();
+  browseFrom = pdfPage;
+  const s=$("slider"); s.min=1; s.max=numPages; s.value=pdfPage;
   $("backBtn").hidden = true;
-  updateBrowseLabel(current);
-  $("browse").hidden = false;
-  drawThumb(current);
+  updateBrowseLabel(pdfPage);
+  openSheet("browse");
+  drawThumb(pdfPage);
 }
-function closeBrowse(){ $("browse").hidden = true; }
+function syncBrowse(){
+  if($("browse").hidden) return;
+  $("slider").value = pdfPage; updateBrowseLabel(pdfPage);
+}
 function updateBrowseLabel(n){
-  $("browseLabel").textContent =
-    "Page " + n + " of " + doc.numPages + " · " + Math.round(n/doc.numPages*100) + "%";
+  $("browseLabel").textContent = "Page "+n+" of "+numPages+" · "+Math.round(n/numPages*100)+"%";
 }
-$("slider").addEventListener("input", e=>{        // while dragging: preview only
-  const n = +e.target.value;
-  updateBrowseLabel(n);
-  clearTimeout(thumbTimer);
-  thumbTimer = setTimeout(()=>drawThumb(n), 120);
+$("slider").addEventListener("input", e=>{
+  const n=+e.target.value; updateBrowseLabel(n);
+  clearTimeout(thumbTimer); thumbTimer=setTimeout(()=>drawThumb(n),110);
 });
-$("slider").addEventListener("change", e=>{       // released: actually go there
-  const n = +e.target.value;
-  if(n !== browseFrom){
-    $("backBtn").textContent = "Back to " + browseFrom;
-    $("backBtn").hidden = false;
-  }
-  render(n);
+$("slider").addEventListener("change", e=>{
+  const n=+e.target.value;
+  if(n!==browseFrom){ $("backBtn").textContent="↩ Back to "+browseFrom; $("backBtn").hidden=false; }
+  gotoPage(n,0);
 });
 function backJump(){
-  if(browseFrom){
-    render(browseFrom);
-    $("slider").value = browseFrom;
-    updateBrowseLabel(browseFrom);
-    drawThumb(browseFrom);
-    $("backBtn").hidden = true;
-  }
+  if(browseFrom){ gotoPage(browseFrom,0); $("slider").value=browseFrom; updateBrowseLabel(browseFrom); drawThumb(browseFrom); $("backBtn").hidden=true; }
 }
 async function drawThumb(n){
   try{
-    if(thumbTask){ try{thumbTask.cancel();}catch(e){} thumbTask = null; }
-    const page = await doc.getPage(Math.max(1, Math.min(n, doc.numPages)));
-    const c = $("thumbCanvas");
-    const base = page.getViewport({scale:1});
-    const scale = (84 / base.width) * 2;            // 2x for sharpness
-    const vp = page.getViewport({scale});
-    c.width = vp.width; c.height = vp.height;
-    c.style.width = "84px"; c.style.height = (vp.height/2)+"px";
-    thumbTask = page.render({canvasContext:c.getContext("2d"), viewport:vp});
-    await thumbTask.promise;
-    thumbTask = null;
-  }catch(err){ /* cancelled mid-scrub — fine */ }
+    if(thumbTask){ try{thumbTask.cancel();}catch(e){} thumbTask=null; }
+    const page = await doc.getPage(Math.max(1,Math.min(n,numPages)));
+    const c=$("thumbCanvas"); const base=page.getViewport({scale:1});
+    const scale=(84/base.width)*2; const vp=page.getViewport({scale});
+    c.width=vp.width; c.height=vp.height; c.style.width="84px"; c.style.height=(vp.height/2)+"px";
+    thumbTask=page.render({canvasContext:c.getContext("2d"),viewport:vp});
+    await thumbTask.promise; thumbTask=null;
+  }catch(err){}
 }
 
-/* swipe or tap edges to turn pages */
-let tx=0, ty=0, tt=0;
+/* ============================================================
+   NAVIGATION: tap zones, swipe, keyboard
+   ============================================================ */
+let toastTimer=null;
+function toast(msg){
+  const el=$("toast"); el.textContent=msg; el.classList.add("show");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove("show"),3000);
+}
+
+let tx=0,ty=0,tt=0,moved=false;
 const stage = $("stage");
 stage.addEventListener("touchstart", e=>{
-  tx = e.touches[0].clientX; ty = e.touches[0].clientY; tt = Date.now();
-}, {passive:true});
+  if(e.touches.length!==1) return;
+  tx=e.touches[0].clientX; ty=e.touches[0].clientY; tt=Date.now(); moved=false;
+},{passive:true});
+stage.addEventListener("touchmove", ()=>{ moved=true; },{passive:true});
 stage.addEventListener("touchend", e=>{
   if(!doc) return;
-  const dx = e.changedTouches[0].clientX - tx;
-  const dy = e.changedTouches[0].clientY - ty;
-  const zoomedWide = stage.scrollWidth > stage.clientWidth + 5;
-  // swipe: horizontal movement wins (only when the page fits the screen width)
-  if(!zoomedWide && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)){
-    turn(dx < 0 ? 1 : -1);
-    return;
+  if(e.target.closest("button,a,mark,input,#selbar")) return;
+  // if the user has selected text, that's a highlight gesture — not navigation
+  const sel = window.getSelection();
+  if(sel && !sel.isCollapsed && sel.toString().trim()){ maybeShowSelbar(); return; }
+  const dx=e.changedTouches[0].clientX - tx, dy=e.changedTouches[0].clientY - ty;
+  const scroll=$("canvasScroll");
+  const zoomedWide = viewMode==="page" && !scroll.hidden && scroll.scrollWidth > scroll.clientWidth+5;
+  if(!zoomedWide && Math.abs(dx)>44 && Math.abs(dx)>Math.abs(dy)*1.4){ turn(dx<0?1:-1); return; }
+  if(!moved && Math.abs(dx)<10 && Math.abs(dy)<10 && Date.now()-tt<350){
+    const x=e.changedTouches[0].clientX, w=window.innerWidth;
+    if(x>w*0.7) turn(1); else if(x<w*0.3) turn(-1); else openBrowse();
   }
-  // tap zones: right third = next, left third = previous, middle = browse
-  if(Math.abs(dx) < 10 && Math.abs(dy) < 10 && Date.now() - tt < 350){
-    const x = e.changedTouches[0].clientX, w = window.innerWidth;
-    if(x > w*0.66) turn(1);
-    else if(x < w*0.33) turn(-1);
-    else toggleBrowse();
-  }
-}, {passive:true});
+},{passive:true});
 
-/* keyboard (when used on a computer) */
+/* desktop: click edges to turn, mouse-select to highlight */
+stage.addEventListener("click", e=>{
+  if(!doc || e.target.closest("button,a,mark,input,#selbar")) return;
+  if("ontouchstart" in window) return;   // touch already handled
+  const sel=window.getSelection();
+  if(sel && !sel.isCollapsed && sel.toString().trim()) return;  // selecting
+  const x=e.clientX, w=window.innerWidth;
+  if(x>w*0.72) turn(1); else if(x<w*0.28) turn(-1);
+});
+document.addEventListener("mouseup", ()=>{ if(doc && !("ontouchstart" in window)) setTimeout(maybeShowSelbar,0); });
+document.addEventListener("selectionchange", ()=>{
+  const sel=window.getSelection();
+  if(!sel || sel.isCollapsed) hideSelbar();
+});
+
 document.addEventListener("keydown", e=>{
   if(!doc || e.target.tagName==="INPUT") return;
-  if(e.key==="ArrowRight"||e.key===" ") turn(1);
-  if(e.key==="ArrowLeft") turn(-1);
-  if(e.key==="Escape") closeReader();
+  if(e.key==="ArrowRight"||e.key==="ArrowDown"||e.key===" "){ e.preventDefault(); turn(1); }
+  if(e.key==="ArrowLeft"||e.key==="ArrowUp"){ e.preventDefault(); turn(-1); }
+  if(e.key==="Escape"){ if(!allSheetsClosed()) closeAllSheets(); else closeReader(); }
+  if(e.key==="+"||e.key==="=") zoom(1);
+  if(e.key==="-"||e.key==="_") zoom(-1);
 });
-window.addEventListener("resize", ()=>{ if(doc) render(current); });
 
-/* ask the browser to keep this site's storage safe from cleanup */
+/* re-paginate on resize / rotate (keep place) */
+let resizeTimer=null;
+window.addEventListener("resize", ()=>{
+  if(!doc) return;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(()=>{
+    hideSelbar();
+    if(viewMode==="text" && pageHasText){
+      const frac = screensTotal>1 ? screenIdx/(screensTotal-1) : 0;
+      layoutColumns(frac);
+    } else render();
+  },160);
+});
+
+/* ---------- boot ---------- */
+setTheme(store.get("theme","paper"));
+setMargin(store.get("margin","medium"));
+syncControls();
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist();
-
 loadShelf();
 </script>
 </body>
